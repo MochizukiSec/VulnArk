@@ -1,36 +1,39 @@
-# 构建阶段
-FROM node:16-alpine as build-stage
+# 構建階段
+FROM registry.cn-hangzhou.aliyuncs.com/google_containers/node:16-alpine as build-stage
 
-# 设置工作目录
+# 設置工作目錄
 WORKDIR /app
 
-# 拷贝package.json和package-lock.json (或 yarn.lock)
+# 拷貝package.json和package-lock.json (或 yarn.lock)
 COPY frontend/package*.json ./
 
-# 安装依赖
+# 設置npm鏡像源為淘寶鏡像
+RUN npm config set registry https://registry.npmmirror.com
+
+# 安裝依賴
 RUN npm install
 
-# 拷贝前端源代码
+# 拷貝前端源代碼
 COPY frontend/ ./
 
-# 构建生产版本
+# 構建生產版本
 RUN npm run build
 
-# 生产阶段
-FROM nginx:stable-alpine as production-stage
+# 生產階段
+FROM registry.cn-hangzhou.aliyuncs.com/google_containers/nginx:stable-alpine as production-stage
 
-# 从构建阶段拷贝构建结果到Nginx默认目录
+# 從構建階段拷貝構建結果到Nginx默認目錄
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# 拷贝自定义Nginx配置
+# 拷貝自定義Nginx配置
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # 暴露端口
 EXPOSE 80
 
-# 设置健康检查
+# 設置健康檢查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost/ || exit 1
+  CMD wget -q -O - http://localhost/ || exit 1
 
-# 启动Nginx
+# 啟動Nginx
 CMD ["nginx", "-g", "daemon off;"] 

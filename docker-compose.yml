@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # MongoDB数据库服务
+  # MongoDB數據庫服務
   mongodb:
-    image: mongo:latest
+    image: registry.cn-hangzhou.aliyuncs.com/google_containers/mongo:latest
     container_name: vuln-mongodb
     restart: always
     environment:
@@ -23,7 +23,7 @@ services:
       retries: 3
       start_period: 30s
 
-  # 后端服务
+  # 後端服務
   backend:
     build:
       context: .
@@ -42,7 +42,7 @@ services:
     networks:
       - vuln-network
 
-  # 前端服务
+  # 前端服務
   frontend:
     build:
       context: .
@@ -56,12 +56,12 @@ services:
     networks:
       - vuln-network
 
-# 数据卷
+# 數據卷
 volumes:
   mongodb_data:
     driver: local
 
-# 网络
+# 網絡
 networks:
   vuln-network:
     driver: bridge 
