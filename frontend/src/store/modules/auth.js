@@ -60,7 +60,14 @@ const actions = {
     try {
       commit('AUTH_REQUEST')
       
-      const response = await axios.post('/auth/login', credentials)
+      // 在登录时记录详细信息，有助于调试
+      console.log('尝试登录:', {
+        baseURL: axios.defaults.baseURL,
+        fullURL: axios.defaults.baseURL + '/api/auth/login',
+        email: credentials.email
+      });
+      
+      const response = await axios.post('/api/auth/login', credentials)
       const { token, user } = response.data
       
       // 保存到本地存储

@@ -6,9 +6,11 @@ import (
 	"os"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -23,6 +25,8 @@ const (
 	UsersCollection           = "users"
 	VulnerabilitiesCollection = "vulnerabilities"
 	ReportsCollection         = "reports"
+	AssetsCollection          = "assets"
+	VulnDatabaseCollection    = "vulndatabase" // 漏洞库集合
 )
 
 // InitDB 初始化MongoDB连接
@@ -84,4 +88,66 @@ func CloseDB() {
 // GetCollection 获取指定名称的集合
 func GetCollection(name string) *mongo.Collection {
 	return Database.Collection(name)
+}
+
+// InitializeDatabase 在系统首次启动时初始化必要的数据
+func InitializeDatabase() error {
+	// 创建管理员账号
+	err := createAdminUser()
+	if err != nil {
+		log.Printf("初始化管理员账号时出错: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// createAdminUser 创建默认管理员账号
+func createAdminUser() error {
+	// 检查管理员账号是否已存在
+	usersCollection := GetCollection(UsersCollection)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// 查询是否已有管理员账号
+	count, err := usersCollection.CountDocuments(ctx, bson.M{"email": "admin@qq.com"})
+	if err != nil {
+		return err
+	}
+
+	// 已存在管理员账号则直接返回
+	if count > 0 {
+		log.Println("管理员账号已存在，跳过创建")
+		return nil
+	}
+
+	// 创建管理员用户
+	adminUser := bson.M{
+		"username":      "admin",
+		"email":         "admin@qq.com",
+		"password_hash": "", // 将在下面设置密码哈希
+		"first_name":    "系统",
+		"last_name":     "管理员",
+		"role":          "admin",
+		"department":    "安全部门",
+		"status":        "active",
+		"created_at":    time.Now(),
+		"updated_at":    time.Now(),
+	}
+
+	// 生成密码哈希
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("Admin123"), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	adminUser["password_hash"] = string(passwordHash)
+
+	// 插入管理员用户
+	result, err := usersCollection.InsertOne(ctx, adminUser)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("成功创建管理员账号，ID: %v", result.InsertedID)
+	return nil
 }

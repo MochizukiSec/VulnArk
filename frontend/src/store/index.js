@@ -4,6 +4,8 @@ import vulnerability from './modules/vulnerability'
 import dashboard from './modules/dashboard'
 import user from './modules/user'
 import report from './modules/report'
+import asset from './modules/asset'
+import vulnDatabase from './modules/vulnDatabase'
 
 export default createStore({
   state: {
@@ -83,6 +85,8 @@ export default createStore({
     vulnerability,
     dashboard,
     user,
-    report
+    report,
+    asset,
+    vulnDatabase
   }
 }) 

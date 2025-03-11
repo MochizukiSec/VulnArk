@@ -68,7 +68,6 @@
         </div>
         
         <div class="form-footer">
-          <p>还没有账号？<router-link to="/register">立即注册</router-link></p>
           <p class="home-link"><router-link to="/">返回首页</router-link></p>
         </div>
       </el-form>

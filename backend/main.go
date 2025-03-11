@@ -13,6 +13,7 @@ import (
 	"vuln-management/config"
 	"vuln-management/controllers"
 	"vuln-management/middleware"
+	"vuln-management/routes"
 	"vuln-management/services"
 
 	"github.com/gin-contrib/cors"
@@ -32,35 +33,73 @@ func main() {
 	}
 	defer config.CloseDB()
 
+	// 初始化数据库数据
+	if err := config.InitializeDatabase(); err != nil {
+		log.Printf("初始化数据失败: %v", err)
+		// 仅打印警告，不中止程序
+	} else {
+		log.Println("数据库初始化完成")
+	}
+
 	// 创建Gin引擎
 	r := gin.Default()
 
 	// 配置CORS
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{getEnv("ALLOWED_ORIGINS", "*")},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowAllOrigins = true // 允许所有源
+	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"}
+	corsConfig.ExposeHeaders = []string{"Content-Length"}
+	corsConfig.AllowCredentials = true
+	corsConfig.MaxAge = 12 * time.Hour
+	r.Use(cors.New(corsConfig))
+
+	// 添加OPTIONS请求处理程序
+	r.OPTIONS("/*path", func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		if corsConfig.AllowAllOrigins {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		} else if origin != "" {
+			// 检查是否是允许的源
+			allowed := false
+			for _, allowedOrigin := range corsConfig.AllowOrigins {
+				if allowedOrigin == origin {
+					allowed = true
+					break
+				}
+			}
+			if allowed {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+		}
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Origin, Content-Type, Accept, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
+		c.Writer.Header().Set("Content-Type", "application/json")
+		c.AbortWithStatus(http.StatusOK)
+		return
+	})
 
 	// 创建服务
 	userService := services.NewUserService(config.Database)
 	vulnService := services.NewVulnerabilityService(config.Database)
 	reportService := services.NewReportService(config.Database)
-	// 创建AI分析服务
 	aiAnalysisService := services.NewAIAnalysisService(config.Database)
+	assetService := services.NewAssetService(config.Database)
 
 	// 创建控制器
 	userController := controllers.NewUserController(userService)
 	vulnController := controllers.NewVulnerabilityController(vulnService)
 	reportController := controllers.NewReportController(reportService)
-	// 创建AI分析控制器
 	aiAnalysisController := controllers.NewAIAnalysisController(aiAnalysisService)
+	assetController := controllers.NewAssetController(assetService)
 
-	// 设置API路由
-	setupRoutes(r, userController, vulnController, reportController, aiAnalysisController)
+	// 设置路由
+	setupRoutes(r, userController, vulnController, reportController, aiAnalysisController, assetController)
+
+	// 使用routes包中的SetupRouter方法设置漏洞库路由
+	routes.SetupRouter(r)
 
 	// 获取端口，默认为8000
 	port := getEnv("PORT", "8000")
@@ -94,7 +133,7 @@ func main() {
 	log.Println("服务器优雅退出")
 }
 
-func setupRoutes(r *gin.Engine, userController *controllers.UserController, vulnController *controllers.VulnerabilityController, reportController *controllers.ReportController, aiAnalysisController *controllers.AIAnalysisController) {
+func setupRoutes(r *gin.Engine, userController *controllers.UserController, vulnController *controllers.VulnerabilityController, reportController *controllers.ReportController, aiAnalysisController *controllers.AIAnalysisController, assetController *controllers.AssetController) {
 	// 公共路由
 	public := r.Group("/api")
 	{
@@ -102,10 +141,12 @@ func setupRoutes(r *gin.Engine, userController *controllers.UserController, vuln
 			c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "服务运行正常"})
 		})
 
+		// 系统初始化路由
+		public.POST("/initialize/admin", userController.InitializeAdmin)
+
 		// 身份验证相关路由
 		auth := public.Group("/auth")
 		{
-			auth.POST("/register", userController.Register)
 			auth.POST("/login", userController.Login)
 		}
 	}
@@ -155,6 +196,24 @@ func setupRoutes(r *gin.Engine, userController *controllers.UserController, vuln
 
 		// AI分析相关路由
 		aiAnalysisController.RegisterRoutes(protected)
+
+		// 资产管理相关路由
+		assets := protected.Group("/assets")
+		{
+			assets.GET("", assetController.SearchAssets)
+			assets.GET("/:id", assetController.GetAssetByID)
+			assets.POST("", assetController.CreateAsset)
+			assets.PUT("/:id", assetController.UpdateAsset)
+			assets.DELETE("/:id", assetController.DeleteAsset)
+
+			// 资产与漏洞关联
+			assets.GET("/:id/vulnerabilities", assetController.GetAssetVulnerabilities)
+			assets.POST("/:id/vulnerabilities/:vulnId", assetController.AddVulnerabilityToAsset)
+			assets.DELETE("/:id/vulnerabilities/:vulnId", assetController.RemoveVulnerabilityFromAsset)
+
+			// 资产备注
+			assets.POST("/:id/notes", assetController.AddAssetNote)
+		}
 	}
 }
 

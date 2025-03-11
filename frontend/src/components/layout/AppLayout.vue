@@ -33,6 +33,27 @@
             </template>
           </el-dropdown>
           
+          <router-link to="/vulndatabase" class="nav-item" active-class="nav-active">
+            <i class="el-icon-collection"></i> 漏洞库
+          </router-link>
+          
+          <el-dropdown trigger="hover" class="nav-item-dropdown">
+            <div class="nav-item">
+              <i class="el-icon-office-building"></i> 资产管理
+              <i class="el-icon-arrow-down nav-arrow"></i>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item>
+                  <router-link to="/assets" class="dropdown-link">资产列表</router-link>
+                </el-dropdown-item>
+                <el-dropdown-item>
+                  <router-link to="/assets/create" class="dropdown-link">创建资产</router-link>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          
           <router-link to="/reports" class="nav-item" active-class="nav-active">
             <i class="el-icon-document"></i> 报告中心
           </router-link>

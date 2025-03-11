@@ -8,7 +8,8 @@ import axios from 'axios'
 import moment from 'moment'
 
 // 配置axios默认值
-axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://localhost:8000/api'
+// 使用相对路径，这样会自动匹配当前域名
+axios.defaults.baseURL = process.env.VUE_APP_API_URL || ''
 axios.interceptors.request.use(config => {
   const token = store.state.auth.token
   if (token) {
@@ -17,10 +18,23 @@ axios.interceptors.request.use(config => {
   return config
 })
 
-// 添加响应拦截器处理401未授权错误
+// 添加响应拦截器处理错误
 axios.interceptors.response.use(
   response => response,
   error => {
+    // 输出更详细的错误信息，帮助调试
+    console.error('Axios错误:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      baseURL: axios.defaults.baseURL,
+      fullURL: axios.defaults.baseURL + (error.config?.url || ''),
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.config?.headers,
+      message: error.message
+    });
+    
     // 如果请求包含静默错误处理标记，则不执行重定向
     if (error.config && error.config._silentError) {
       console.log('静默处理错误请求')

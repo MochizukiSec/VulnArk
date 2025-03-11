@@ -680,3 +680,57 @@ func parseInt(str string, defaultValue int) int {
 	}
 	return val
 }
+
+// InitializeAdmin 手动初始化管理员账号
+func (c *UserController) InitializeAdmin(ctx *gin.Context) {
+	// 检查是否已有管理员账号
+	usersCollection := config.GetCollection(config.UsersCollection)
+	dbCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	count, err := usersCollection.CountDocuments(dbCtx, bson.M{"role": "admin"})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "检查管理员账号失败", "details": err.Error()})
+		return
+	}
+
+	// 已存在管理员账号
+	if count > 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "管理员账号已存在", "count": count})
+		return
+	}
+
+	// 创建管理员用户
+	adminUser := models.User{
+		Username:   "admin",
+		Email:      "admin@qq.com",
+		FirstName:  "系统",
+		LastName:   "管理员",
+		Role:       models.RoleAdmin,
+		Department: "安全部门",
+		Status:     models.StatusActive,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	// 设置密码
+	err = adminUser.SetPassword("Admin123")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "设置密码失败", "details": err.Error()})
+		return
+	}
+
+	// 插入到数据库
+	result, err := usersCollection.InsertOne(dbCtx, adminUser)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "创建管理员失败", "details": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message":  "管理员账号初始化成功",
+		"id":       result.InsertedID,
+		"email":    "admin@qq.com",
+		"password": "Admin123",
+	})
+}

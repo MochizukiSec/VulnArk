@@ -4,7 +4,6 @@ import store from '../store'
 // 懒加载组件
 const Home = () => import('../views/Home.vue')
 const Login = () => import('../views/auth/Login.vue')
-const Register = () => import('../views/auth/Register.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
 const Reports = () => import('../views/reports/Reports.vue')
 const UserManagement = () => import('../views/admin/UserManagement.vue')
@@ -21,6 +20,16 @@ const ReportGeneration = () => import('../views/reports/Reports.vue')
 const ReportHistory = () => import('../views/reports/Reports.vue')
 const AIAnalysis = () => import('../views/ai/AIAnalysis.vue')
 
+// 漏洞库相关组件
+const VulnDatabase = () => import('../views/vulndatabase/VulnDatabaseList.vue')
+const VulnDatabaseDetail = () => import('../views/vulndatabase/VulnDatabaseDetail.vue')
+const VulnDatabaseCreate = () => import('../views/vulndatabase/VulnDatabaseCreate.vue')
+
+// 资产管理相关组件
+const AssetList = () => import('../views/assets/AssetList.vue')
+const AssetDetail = () => import('../views/assets/AssetDetail.vue')
+const AssetForm = () => import('../views/assets/AssetForm.vue')
+
 // 路由配置
 const routes = [
   {
@@ -34,12 +43,6 @@ const routes = [
     name: 'Login',
     component: Login,
     meta: { requiresAuth: false, title: '登录' }
-  },
-  {
-    path: '/register',
-    name: 'Register',
-    component: Register,
-    meta: { requiresAuth: false, title: '注册' }
   },
   // 嵌套在AppLayout内的路由
   {
@@ -113,6 +116,50 @@ const routes = [
         name: 'AIAnalysis',
         component: AIAnalysis,
         meta: { requiresAuth: true, title: 'AI智能分析' }
+      },
+      {
+        path: '/vulndatabase',
+        name: 'VulnDatabase',
+        component: VulnDatabase,
+        meta: { requiresAuth: true, title: '漏洞库' }
+      },
+      {
+        path: '/vulndatabase/create',
+        name: 'VulnDatabaseCreate',
+        component: VulnDatabaseCreate,
+        meta: { requiresAuth: true, title: '新增漏洞' }
+      },
+      {
+        path: '/vulndatabase/:cveId',
+        name: 'VulnDatabaseDetail',
+        component: VulnDatabaseDetail,
+        meta: { requiresAuth: true, title: '漏洞详情' }
+      },
+      {
+        path: '/assets',
+        name: 'AssetList',
+        component: AssetList,
+        meta: { requiresAuth: true, title: '资产管理' }
+      },
+      {
+        path: '/assets/create',
+        name: 'AssetCreate',
+        component: AssetForm,
+        meta: { requiresAuth: true, title: '创建资产' }
+      },
+      {
+        path: '/assets/:id',
+        name: 'AssetDetail',
+        component: AssetDetail,
+        meta: { requiresAuth: true, title: '资产详情' },
+        props: true
+      },
+      {
+        path: '/assets/:id/edit',
+        name: 'AssetEdit',
+        component: AssetForm,
+        meta: { requiresAuth: true, title: '编辑资产' },
+        props: true
       }
     ]
   },
@@ -171,8 +218,8 @@ router.beforeEach((to, from, next) => {
     return
   }
   
-  // 如果用户已登录并尝试访问登录/注册页，重定向到仪表盘
-  if (isAuthenticated && (to.name === 'Login' || to.name === 'Register')) {
+  // 如果用户已登录并尝试访问登录页，重定向到仪表盘
+  if (isAuthenticated && to.name === 'Login') {
     next({ name: 'Dashboard' })
     return
   }

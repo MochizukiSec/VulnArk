@@ -44,7 +44,6 @@ export default {
         // 其他情况，如果未认证且需要认证，则重定向到登录页面
         if (!isAuthenticated.value && 
             router.currentRoute.value.name !== 'Login' && 
-            router.currentRoute.value.name !== 'Register' &&
             router.currentRoute.value.meta.requiresAuth) {
           console.log('未认证用户访问需要认证的页面，重定向到登录页面')
           router.push('/login')

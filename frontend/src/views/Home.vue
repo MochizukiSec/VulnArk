@@ -20,7 +20,6 @@
         
         <div class="header-actions">
           <router-link to="/login" class="header-btn login-btn">登录</router-link>
-          <router-link to="/register" class="header-btn register-btn">注册</router-link>
         </div>
         
         <button class="mobile-menu-btn" @click="toggleMobileMenu">
@@ -50,7 +49,6 @@
         </ul>
         <div class="mobile-menu-actions">
           <router-link to="/login" class="header-btn login-btn" @click="toggleMobileMenu">登录</router-link>
-          <router-link to="/register" class="header-btn register-btn" @click="toggleMobileMenu">注册</router-link>
         </div>
       </div>
     </div>
@@ -277,14 +275,10 @@
       <div class="cta-section">
         <div class="cta-content">
           <h2>准备好提升您的安全管理了吗？</h2>
-          <p>立即注册并开始使用我们的漏洞管理平台</p>
+          <p>立即开始使用我们的漏洞管理平台</p>
           <div class="cta-actions">
             <router-link to="/login" class="hero-btn primary-btn">
               <span>开始使用</span>
-              <i class="el-icon-arrow-right"></i>
-            </router-link>
-            <router-link to="/register" class="hero-btn secondary-btn">
-              <span>注册账号</span>
               <i class="el-icon-arrow-right"></i>
             </router-link>
           </div>
@@ -1201,18 +1195,6 @@ html, body {
         &:hover {
           background: rgba(255, 255, 255, 0.2);
           transform: translateY(-2px);
-        }
-      }
-      
-      &.register-btn {
-        color: white;
-        background: linear-gradient(90deg, #ff00cc, #00ffff);
-        border: none;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        
-        &:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
         }
       }
     }
