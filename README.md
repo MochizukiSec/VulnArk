@@ -232,6 +232,11 @@ mongorestore --db vulnark_db /backup/20230101/vulnark_db
 - 实现API响应缓存
 - 优化前端资源加载和渲染
 - 考虑使用CDN加速静态资源
+- 
+
+## ☎️联系作者
+![WechatIMG5](https://github.com/user-attachments/assets/97df7e28-5ada-47dc-a5be-e540122929cf)
+![WechatIMG6](https://github.com/user-attachments/assets/da85b4c8-531e-4b7e-9234-b70bb1f14301)
 
 ## 🤝 贡献指南
 
