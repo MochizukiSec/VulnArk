@@ -88,39 +88,6 @@ const actions = {
     }
   },
   
-  // 用户注册
-  async register({ commit, dispatch }, userData) {
-    try {
-      commit('AUTH_REQUEST')
-      
-      const response = await axios.post('/auth/register', userData)
-      const { token, user } = response.data
-      
-      // 保存到本地存储
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
-      
-      // 更新状态
-      commit('AUTH_SUCCESS', { token, user })
-      
-      // 设置axios默认Authorization头
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      
-      // 添加欢迎通知
-      dispatch('addNotification', {
-        type: 'success',
-        message: `欢迎加入，${user.firstName}！`,
-        title: '注册成功'
-      }, { root: true })
-      
-      return { success: true }
-    } catch (error) {
-      const message = error.response?.data?.error || '注册失败，请检查输入信息'
-      commit('AUTH_ERROR', message)
-      return { success: false, message }
-    }
-  },
-  
   // 恢复会话
   async restoreSession({ commit, state }) {
     if (!state.token) return { success: false }
@@ -151,13 +118,18 @@ const actions = {
         response = await axios.get('/users/me');
       }
       
-      const user = response.data
+      console.log('获取用户信息成功，用户数据:', response.data);
       
-      // 更新本地存储中的用户信息
-      localStorage.setItem('user', JSON.stringify(user))
-      
-      // 更新状态
-      commit('UPDATE_USER', user)
+      // 更新用户状态
+      if (response.data) {
+        commit('AUTH_SUCCESS', { 
+          token: state.token,
+          user: response.data
+        });
+        
+        // 更新本地存储
+        localStorage.setItem('user', JSON.stringify(response.data));
+      }
       
       return { success: true }
     } catch (error) {
