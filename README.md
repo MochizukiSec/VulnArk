@@ -5,14 +5,11 @@
   <p>安全漏洞全生命周期管理系统，集成报告生成与数据分析功能</p>
 </div>
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/username/vulnark.svg)](https://hub.docker.com/r/username/vulnark)
 [![License](https://img.shields.io/github/license/MochizukiSec/VulnArk.svg)](https://github.com/MochizukiSec/VulnArk/blob/main/LICENSE)
 
 ## 📖 概述
 
 VulnArk是一个现代化的漏洞管理平台，帮助安全团队高效管理漏洞的全生命周期。系统支持漏洞的记录、跟踪、优先级管理、报告生成和数据分析，提供直观的用户界面和全面的API支持。
-
-> **注意**: 此仓库仅包含Docker配置文件，不包含源代码。这是为了方便用户通过Docker快速部署应用，同时保护项目的核心知识产权。
 
 ## ✨ 核心功能
 
@@ -27,33 +24,15 @@ VulnArk是一个现代化的漏洞管理平台，帮助安全团队高效管理�
 
 ### 前提条件
 
-- [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)
+- Go 1.19或更高版本
+- Node.js 16或更高版本和npm
+- MongoDB 5.0或更高版本
 - 至少4GB内存和2核CPU
 - 20GB可用磁盘空间
-- 良好的网络连接（用于拉取Docker镜像）
 
-### 使用Docker部署
+### 源码部署方式
 
-#### 方法一：使用打包的配置文件
-
-本仓库提供了一个打包的配置文件 `vulnark-docker.tar.gz`，您可以下载并解压后使用：
-
-1. 下载配置文件包
-   ```bash
-   wget https://github.com/MochizukiSec/VulnArk/raw/main/vulnark-docker.tar.gz
-   ```
-
-2. 解压配置文件
-   ```bash
-   tar -xzf vulnark-docker.tar.gz
-   ```
-
-3. 启动服务
-   ```bash
-   docker-compose up -d
-   ```
-
-#### 方法二：直接使用仓库中的配置文件
+#### 后端部署
 
 1. 克隆仓库
    ```bash
@@ -61,59 +40,85 @@ VulnArk是一个现代化的漏洞管理平台，帮助安全团队高效管理�
    cd VulnArk
    ```
 
-2. 启动服务
+2. 配置环境变量
+   创建`.env`文件在后端目录下（或复制`.env.example`）:
    ```bash
-   docker-compose up -d
+   cd backend
+   cp .env.example .env
+   # 编辑.env文件，配置MongoDB连接和其他参数
    ```
 
-3. 访问应用
-   ```
-   前端: http://localhost:8080
-   API: http://localhost:8000
+3. 安装依赖并构建
+   ```bash
+   go mod download
+   go build -o vulnark-server
    ```
 
-4. 默认管理员账号
+4. 启动后端服务
+   ```bash
+   ./vulnark-server
    ```
-   用户名: admin@vulnark.com
-   密码: Admin@123
+
+#### 前端部署
+
+1. 进入前端目录
+   ```bash
+   cd frontend
    ```
+
+2. 安装依赖
+   ```bash
+   npm install
+   ```
+
+3. 配置API地址
+   编辑`.env.production`文件（如果不存在则创建）:
+   ```
+   VUE_APP_API_URL=http://your-backend-server:8000
+   ```
+
+4. 构建生产版本
+   ```bash
+   npm run build
+   ```
+
+5. 部署静态文件
+   将`dist`目录下的文件部署到您的Web服务器（如Nginx、Apache等）
+
+#### Nginx配置示例
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        root /path/to/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:8000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
 
 ## 🔧 配置选项
 
-VulnArk提供多种配置选项，可通过环境变量或修改docker-compose.yml文件进行设置。
+VulnArk提供多种配置选项，可通过环境变量进行设置。
 
 ### 环境变量
 
 | 环境变量 | 说明 | 默认值 |
 |----------|------|---------|
 | PORT | API服务端口 | 8000 |
-| MONGO_URI | MongoDB连接URI | mongodb://mongodb:27017 |
+| MONGO_URI | MongoDB连接URI | mongodb://localhost:27017 |
 | MONGO_DB_NAME | MongoDB数据库名称 | vulnark_db |
 | JWT_SECRET | JWT密钥 | your-secret-key-for-production |
 | ALLOWED_ORIGINS | CORS允许的源 | http://localhost:8080 |
 | LOG_LEVEL | 日志级别 | info |
-
-### 自定义配置示例
-
-您可以创建一个 `docker-compose.override.yml` 文件来覆盖默认配置：
-
-```yaml
-# docker-compose.override.yml
-version: '3.8'
-
-services:
-  backend:
-    environment:
-      - PORT=9000
-      - JWT_SECRET=my-custom-secret
-      - LOG_LEVEL=debug
-    ports:
-      - "9000:9000"
-  
-  frontend:
-    ports:
-      - "3000:80"
-```
 
 ## 📊 系统架构
 
@@ -149,30 +154,84 @@ VulnArk内置了多层安全机制：
 
 ## 🛠 常见问题
 
-### 如何更新到最新版本？
+### 1. 启动后端服务时MongoDB连接失败
+
+**问题**: 启动后端服务时报错 "failed to connect to MongoDB"
+
+**解决方案**:
+- 确认MongoDB服务已正常运行
+- 检查.env文件中的MONGO_URI配置是否正确
+- 确认MongoDB用户名和密码正确（如果启用了身份验证）
+
+### 2. 前端API请求失败
+
+**问题**: 前端页面加载但无法获取数据，浏览器控制台显示API请求错误
+
+**解决方案**:
+- 确认后端服务正常运行
+- 检查前端环境变量中的API地址配置是否正确
+- 查看浏览器控制台错误信息，检查是否存在CORS问题
+  - 如果存在CORS问题，请确保后端ALLOWED_ORIGINS环境变量包含前端域名
+- 检查网络请求是否有身份验证错误，尝试重新登录
+
+### 3. 用户注册/登录问题
+
+**问题**: 无法注册新用户或登录失败
+
+**解决方案**:
+- 确认后端服务和数据库连接正常
+- 检查日志中是否有详细错误信息
+- 对于登录问题，可尝试重置密码
+
+### 4. 如何更新到最新版本？
 
 ```bash
-# 拉取最新的Docker镜像
-docker-compose pull
+# 拉取最新代码
+git pull origin main
 
-# 重启服务
-docker-compose down
-docker-compose up -d
+# 后端更新
+cd backend
+go mod download
+go build -o vulnark-server
+# 重启后端服务
+
+# 前端更新
+cd frontend
+npm install
+npm run build
+# 重新部署dist目录
 ```
 
-### 数据备份与恢复
+### 5. 数据备份与恢复
 
-备份MongoDB数据：
+**备份MongoDB数据**:
 
 ```bash
-docker exec -it vulnark_mongodb mongodump --out /backup/$(date +%Y%m%d)
+# 本地MongoDB
+mongodump --db vulnark_db --out /backup/$(date +%Y%m%d)
 ```
 
-恢复MongoDB数据：
+**恢复MongoDB数据**:
 
 ```bash
-docker exec -it vulnark_mongodb mongorestore /backup/20230101
+# 本地MongoDB
+mongorestore --db vulnark_db /backup/20230101/vulnark_db
 ```
+
+### 6. 性能优化建议
+
+如果系统运行缓慢，可以尝试以下优化措施：
+
+- 为MongoDB创建适当的索引
+  ```javascript
+  db.vulnerabilities.createIndex({ "cvss_score": 1 })
+  db.vulnerabilities.createIndex({ "status": 1 })
+  db.vulnerabilities.createIndex({ "created_at": 1 })
+  ```
+- 增加后端服务的资源配置
+- 实现API响应缓存
+- 优化前端资源加载和渲染
+- 考虑使用CDN加速静态资源
 
 ## 🤝 贡献指南
 
