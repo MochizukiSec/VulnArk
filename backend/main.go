@@ -134,6 +134,23 @@ func main() {
 }
 
 func setupRoutes(r *gin.Engine, userController *controllers.UserController, vulnController *controllers.VulnerabilityController, reportController *controllers.ReportController, aiAnalysisController *controllers.AIAnalysisController, assetController *controllers.AssetController) {
+	// 处理重复路径问题：添加一个前缀为"/api/api"的路由组，将请求重定向到正确的路径
+	apiRedirect := r.Group("/api/api")
+	{
+		// 处理/api/api/auth/login重复路径
+		apiRedirect.POST("/auth/login", userController.Login)
+
+		// 其他可能的重复路径 - 可根据需要添加更多
+		apiRedirect.Any("/*path", func(c *gin.Context) {
+			// 获取path参数
+			path := c.Param("path")
+			// 重定向到正确的路径
+			c.Request.URL.Path = "/api" + path
+			// 继续路由处理
+			r.HandleContext(c)
+		})
+	}
+
 	// 公共路由
 	public := r.Group("/api")
 	{

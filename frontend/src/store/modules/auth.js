@@ -67,7 +67,11 @@ const actions = {
         email: credentials.email
       });
       
-      const response = await axios.post('/api/auth/login', credentials)
+      // 由于baseURL已经为空，我们需要确保路径的正确性
+      // 如果当前请求显示/api/api/重复，则需要去掉一层/api/
+      const loginPath = '/api/auth/login'
+      
+      const response = await axios.post(loginPath, credentials)
       const { token, user } = response.data
       
       // 保存到本地存储
