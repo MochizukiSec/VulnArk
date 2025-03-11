@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ff00cc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00ffff;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0072ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00c6ff;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4776e6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8e54e9;stop-opacity:1" />
+    </linearGradient>
+    <style>
+      .title { font: bold 20px sans-serif; }
+      .subtitle { font: 15px sans-serif; fill: #666; }
+      .label { font: 14px sans-serif; fill: white; }
+      .arrow { fill: none; stroke: #333; stroke-width: 2; }
+      .component { fill-opacity: 0.9; }
+      .desc { font: 12px sans-serif; fill: #444; }
+    </style>
+  </defs>
+  
+  <!-- 标题 -->
+  <text x="400" y="50" class="title" text-anchor="middle">VulnArk 系统架构</text>
+  <rect x="220" y="65" width="360" height="2" fill="url(#gradient1)" />
+  <text x="400" y="85" class="subtitle" text-anchor="middle">安全漏洞管理平台架构图</text>
+  
+  <!-- 用户层 -->
+  <rect x="300" y="120" width="200" height="60" rx="5" ry="5" class="component" fill="#333" />
+  <text x="400" y="155" class="label" text-anchor="middle">用户 (浏览器/API客户端)</text>
+  
+  <!-- 前端层 -->
+  <rect x="80" y="230" width="280" height="80" rx="8" ry="8" class="component" fill="url(#gradient1)" />
+  <text x="220" y="265" class="label" text-anchor="middle">前端应用层</text>
+  <text x="220" y="290" class="desc" text-anchor="middle">Vue.js + Element Plus</text>
+  
+  <!-- 后端层 -->
+  <rect x="440" y="230" width="280" height="80" rx="8" ry="8" class="component" fill="url(#gradient2)" />
+  <text x="580" y="265" class="label" text-anchor="middle">后端API服务层</text>
+  <text x="580" y="290" class="desc" text-anchor="middle">Go + Gin Framework</text>
+  
+  <!-- 数据库层 -->
+  <rect x="300" y="360" width="200" height="80" rx="8" ry="8" class="component" fill="url(#gradient3)" />
+  <text x="400" y="395" class="label" text-anchor="middle">数据存储层</text>
+  <text x="400" y="420" class="desc" text-anchor="middle">MongoDB</text>
+  
+  <!-- 连接线 -->
+  <!-- 用户到前端 -->
+  <path d="M340 180 L240 230" class="arrow" marker-end="url(#arrowhead)" />
+  <text x="270" y="210" class="desc">HTTP/HTTPS</text>
+  
+  <!-- 用户到后端API (直接调用) -->
+  <path d="M460 180 L560 230" class="arrow" marker-end="url(#arrowhead)" />
+  <text x="530" y="210" class="desc">REST API</text>
+  
+  <!-- 前端到后端 -->
+  <path d="M360 270 L440 270" class="arrow" marker-end="url(#arrowhead)" />
+  <text x="400" y="260" class="desc">AJAX/REST</text>
+  
+  <!-- 后端到数据库 -->
+  <path d="M520 310 L440 360" class="arrow" marker-end="url(#arrowhead)" />
+  <text x="500" y="340" class="desc">MongoDB驱动</text>
+  
+  <!-- 箭头定义 -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+  
+  <!-- 注释 -->
+  <text x="40" y="470" class="desc">• 前端应用通过HTTP/HTTPS与用户浏览器交互</text>
+  <text x="40" y="490" class="desc">• API客户端可直接调用后端REST API</text>
+  <text x="400" y="470" class="desc">• 后端使用RESTful API提供服务</text>
+  <text x="400" y="490" class="desc">• 采用JWT认证保障API安全</text>
+</svg> 

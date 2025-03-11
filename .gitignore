@@ -1,0 +1,46 @@
+# 编译输出
+/dist
+/build
+/bin
+
+# 依赖目录
+/node_modules
+/vendor
+
+# 日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 编辑器文件
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 测试覆盖率报告
+/coverage
+
+# 临时文件
+tmp/
+temp/
+
+# Docker
+.docker
+docker-compose.override.yml
+
+# 不忽略示例环境文件
+!.env.example
+
+# 忽略node_modules
+**/node_modules/
+/frontend/node_modules
+/node_modules
+*node_modules* 
