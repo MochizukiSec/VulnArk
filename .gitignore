@@ -63,4 +63,4 @@ Thumbs.db
 *.swo
 
 # WeChat Images
-WechatIMG*.jpg 
+WechatIMG*.jpg .specstory/
