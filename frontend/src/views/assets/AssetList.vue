@@ -14,6 +14,9 @@
         <el-button type="primary" @click="goToCreate" class="action-btn">
           <i class="el-icon-plus"></i> 添加资产
         </el-button>
+        <el-button type="success" @click="goToImport" class="action-btn import-btn">
+          <i class="el-icon-upload2"></i> 批量导入
+        </el-button>
       </div>
     </div>
 
@@ -70,7 +73,7 @@
         @row-click="handleRowClick"
         :empty-text="loading ? '加载中...' : '未找到符合条件的资产'"
       >
-        <el-table-column label="ID" prop="id" width="80" />
+        <el-table-column label="序号" type="index" :index="indexMethod" width="80" />
         <el-table-column label="名称" prop="name" min-width="150">
           <template #default="scope">
             <el-tooltip :content="scope.row.description" placement="top">
@@ -138,7 +141,7 @@
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
-          v-model:currentPage="currentPage"
+          :current-page="currentPage"
           :page-sizes="[10, 20, 50, 100]"
           :page-size="pageSize"
           layout="total, sizes, prev, pager, next, jumper"
@@ -224,6 +227,11 @@ export default {
     // 跳转到创建页面
     const goToCreate = () => {
       router.push({ name: 'AssetCreate' })
+    }
+    
+    // 跳转到批量导入页面
+    const goToImport = () => {
+      router.push({ name: 'AssetImport' })
     }
     
     // 跳转到详情页面
@@ -315,6 +323,11 @@ export default {
       return tags[env] || 'info'
     }
     
+    // 计算表格行的序号，基于当前页码和每页条数
+    const indexMethod = (index) => {
+      return (currentPage.value - 1) * pageSize.value + index + 1
+    }
+    
     onMounted(() => {
       fetchAssets()
     })
@@ -326,12 +339,14 @@ export default {
       pageSize,
       totalAssets,
       searchParams,
+      formatDate,
       fetchAssets,
-      resetFilters,
       handleSizeChange,
       handleCurrentChange,
+      resetFilters,
       handleRowClick,
       goToCreate,
+      goToImport,
       goToDetails,
       goToEdit,
       confirmDelete,
@@ -339,7 +354,7 @@ export default {
       getAssetTypeTag,
       getEnvironmentLabel,
       getEnvironmentTag,
-      formatDate
+      indexMethod
     }
   }
 }
@@ -415,5 +430,15 @@ export default {
 
 .asset-link:hover {
   text-decoration: underline;
+}
+
+.action-btn {
+  margin-left: 10px;
+}
+
+.import-btn {
+  font-weight: bold;
+  margin-left: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 </style> 

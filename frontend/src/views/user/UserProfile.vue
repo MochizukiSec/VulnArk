@@ -420,7 +420,7 @@ export default {
         loading.profile = true
         
         // 调用API更新个人信息
-        const response = await axios.put('/users/me', {
+        const response = await axios.put('/api/users/me', {
           firstName: profileData.firstName,
           lastName: profileData.lastName,
           department: profileData.department
@@ -462,7 +462,7 @@ export default {
         loading.password = true
         
         // 调用API更新密码
-        const response = await axios.put('/users/me', {
+        const response = await axios.put('/api/users/me', {
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword
         })
@@ -593,7 +593,15 @@ export default {
     }
     
     onMounted(() => {
-      initFormData()
+      // 获取最新的用户信息
+      store.dispatch('user/fetchCurrentUser')
+        .then(() => {
+          console.log('用户信息已更新')
+          initFormData()
+        })
+        .catch(error => {
+          console.error('获取用户信息失败:', error)
+        })
     })
     
     return {

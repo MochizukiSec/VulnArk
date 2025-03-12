@@ -232,12 +232,18 @@
               团队漏洞统计
             </h3>
           </div>
-          <div class="chart-container team-container" v-loading="loading">
+          <div 
+            class="chart-container team-container" 
+            v-loading="loading" 
+            ref="teamContainerRef"
+            style="height: 400px !important; max-height: none !important; overflow-y: auto !important; position: relative !important;"
+          >
             <div v-if="!loading && teamVulnerabilities.length > 0" class="team-list">
               <div 
                 v-for="(team, index) in teamVulnerabilities" 
                 :key="index" 
                 class="team-item"
+                style="margin-bottom: 12px; padding: 16px; border-radius: 8px; background-color: #f9f9f9; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);"
               >
                 <div class="team-info">
                   <div class="team-name">{{ team.team }}</div>
@@ -366,7 +372,7 @@
 </template>
 
 <script>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref, nextTick, watch, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import PieChart from '@/components/charts/PieChart.vue';
 import DoughnutChart from '@/components/charts/DoughnutChart.vue';
@@ -392,6 +398,26 @@ export default {
     const teamVulnerabilities = computed(() => store.getters['dashboard/teamVulnerabilities'] || []);
     const criticalVulnerabilities = computed(() => store.getters['dashboard/criticalVulnerabilities'] || []);
     const vulnerabilityTrends = computed(() => store.getters['dashboard/vulnerabilityTrends']);
+    
+    // 团队容器引用，用于检测滚动
+    const teamContainerRef = ref(null);
+    // 是否有更多团队数据需要滚动
+    const hasMoreTeams = ref(false);
+    
+    // 检查团队容器是否需要滚动
+    const checkTeamScroll = () => {
+      if (teamContainerRef.value) {
+        const container = teamContainerRef.value;
+        // 如果内容高度大于容器高度，说明需要滚动
+        hasMoreTeams.value = container.scrollHeight > container.clientHeight;
+        // 添加或移除表示有更多内容的CSS类
+        if (hasMoreTeams.value) {
+          container.classList.add('has-more');
+        } else {
+          container.classList.remove('has-more');
+        }
+      }
+    };
     
     // 获取特定状态的数量
     const getStatusCount = (status) => {
@@ -741,9 +767,28 @@ export default {
     onMounted(async () => {
       try {
         await store.dispatch('dashboard/fetchDashboardData');
+        // 数据加载完成后，检查团队容器是否需要滚动
+        nextTick(() => {
+          checkTeamScroll();
+        });
       } catch (error) {
         console.error('加载仪表盘数据失败:', error);
       }
+      
+      // 监听窗口大小变化，重新检查滚动状态
+      window.addEventListener('resize', checkTeamScroll);
+    });
+    
+    // 组件卸载时移除事件监听
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkTeamScroll);
+    });
+    
+    // 监听团队数据变化，重新检查滚动状态
+    watch(teamVulnerabilities, () => {
+      nextTick(() => {
+        checkTeamScroll();
+      });
     });
 
     return {
@@ -761,6 +806,8 @@ export default {
       hasStatusData,
       hasMonthlyData,
       hasTrendsData,
+      teamContainerRef,
+      hasMoreTeams,
       getStatusCount,
       getCriticalHighCount,
       trendsChartData,
@@ -1279,75 +1326,122 @@ export default {
 }
 
 .team-container {
-  padding: 20px;
+  padding: 20px 20px 35px 20px !important;
+  height: 400px !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  scroll-behavior: smooth !important;
+  position: relative !important;
+  
+  &::-webkit-scrollbar {
+    width: 8px !important;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background-color: #f1f1f1 !important;
+    border-radius: 4px !important;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: #a0a0a0 !important;
+    border-radius: 4px !important;
+    
+    &:hover {
+      background-color: #777 !important;
+    }
+  }
   
   .team-list {
-    .team-item {
-      padding: 16px;
-      border-radius: 8px;
-      background-color: #f9f9f9;
+    padding-bottom: 30px !important;
+  }
+  
+  .team-item {
+    padding: 16px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    .team-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 12px;
       
-      &:last-child {
-        margin-bottom: 0;
+      .team-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 65%;
       }
       
-      .team-info {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
+      .team-count {
+        white-space: nowrap;
         
-        .team-name {
+        .count-value {
           font-size: 16px;
           font-weight: 600;
-          color: #333;
+          color: #409EFF;
         }
         
-        .team-count {
-          .count-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: #409EFF;
-          }
-          
-          .count-label {
-            font-size: 12px;
-            color: #666;
-            margin-left: 4px;
-          }
+        .count-label {
+          font-size: 13px;
+          color: #666;
+          margin-left: 4px;
         }
       }
+    }
+    
+    .team-progress {
+      margin-bottom: 12px;
       
-      .team-progress {
-        margin-bottom: 12px;
+      :deep(.el-progress-bar__outer) {
+        background-color: rgba(0, 0, 0, 0.05);
       }
       
-      .team-severity {
-        .severity-dots {
-          display: flex;
+      :deep(.el-progress__text) {
+        font-size: 13px !important;
+        font-weight: 600;
+      }
+    }
+    
+    .team-severity {
+      .severity-dots {
+        display: flex;
+        
+        .severity-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          margin-right: 10px;
           
-          .severity-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-            
-            &.critical {
-              background-color: #F44336;
-            }
-            
-            &.high {
-              background-color: #FF9800;
-            }
-            
-            &.medium {
-              background-color: #FFEB3B;
-            }
-            
-            &.low {
-              background-color: #4CAF50;
-            }
+          &.critical {
+            background-color: #F44336;
+          }
+          
+          &.high {
+            background-color: #FF9800;
+          }
+          
+          &.medium {
+            background-color: #FFEB3B;
+          }
+          
+          &.low {
+            background-color: #4CAF50;
           }
         }
       }
@@ -1438,6 +1532,82 @@ export default {
   
   .chart-container {
     height: 220px;
+  }
+}
+
+/* 强制修改团队容器样式，确保滚动效果 */
+:deep(.team-container) {
+  height: 400px !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  position: relative !important;
+  padding-bottom: 35px !important;
+  
+  /* 滚动条样式 */
+  &::-webkit-scrollbar {
+    width: 10px !important;
+    height: 10px !important;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 4px !important;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #888 !important;
+    border-radius: 4px !important;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #555 !important;
+  }
+}
+
+/* 确保滚动指示器显示 */
+:deep(.scroll-indicator) {
+  position: fixed !important;
+  bottom: 10px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background-color: rgba(64, 158, 255, 0.4) !important;
+  color: #409EFF !important;
+  padding: 8px 20px !important;
+  border-radius: 20px !important;
+  font-size: 14px !important;
+  font-weight: bold !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  z-index: 2000 !important;
+  animation: bounce 2s infinite !important;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(5px); }
+}
+
+.team-list {
+  padding-bottom: 40px !important;
+}
+
+.team-item {
+  background-color: #f9f9f9 !important;
+  border-radius: 8px !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: transform 0.2s, box-shadow 0.2s !important;
+  
+  &:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  &:last-child {
+    margin-bottom: 0 !important;
   }
 }
 </style> 

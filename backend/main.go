@@ -27,13 +27,16 @@ func main() {
 		log.Println("警告: 未找到.env文件，使用环境变量")
 	}
 
+	log.Println("正在初始化数据库连接...")
 	// 初始化数据库连接
 	if err := config.InitDB(); err != nil {
 		log.Fatalf("初始化数据库失败: %v", err)
 	}
 	defer config.CloseDB()
+	log.Println("数据库连接初始化完成")
 
 	// 初始化数据库数据
+	log.Println("正在初始化数据库数据...")
 	if err := config.InitializeDatabase(); err != nil {
 		log.Printf("初始化数据失败: %v", err)
 		// 仅打印警告，不中止程序
@@ -42,9 +45,12 @@ func main() {
 	}
 
 	// 创建Gin引擎
+	log.Println("正在创建Gin引擎...")
 	r := gin.Default()
+	log.Println("Gin引擎创建完成")
 
 	// 配置CORS
+	log.Println("正在配置CORS...")
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true // 允许所有源
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
@@ -53,6 +59,7 @@ func main() {
 	corsConfig.AllowCredentials = true
 	corsConfig.MaxAge = 12 * time.Hour
 	r.Use(cors.New(corsConfig))
+	log.Println("CORS配置完成")
 
 	// 添加OPTIONS请求处理程序
 	r.OPTIONS("/*path", func(c *gin.Context) {
@@ -82,24 +89,27 @@ func main() {
 	})
 
 	// 创建服务
+	log.Println("正在创建服务...")
 	userService := services.NewUserService(config.Database)
 	vulnService := services.NewVulnerabilityService(config.Database)
-	reportService := services.NewReportService(config.Database)
 	aiAnalysisService := services.NewAIAnalysisService(config.Database)
 	assetService := services.NewAssetService(config.Database)
+	reportService := services.NewReportService(config.Database)
+	log.Println("服务创建完成")
 
 	// 创建控制器
+	log.Println("正在创建控制器...")
 	userController := controllers.NewUserController(userService)
 	vulnController := controllers.NewVulnerabilityController(vulnService)
 	reportController := controllers.NewReportController(reportService)
 	aiAnalysisController := controllers.NewAIAnalysisController(aiAnalysisService)
 	assetController := controllers.NewAssetController(assetService)
+	log.Println("控制器创建完成")
 
 	// 设置路由
+	log.Println("正在设置路由...")
 	setupRoutes(r, userController, vulnController, reportController, aiAnalysisController, assetController)
-
-	// 使用routes包中的SetupRouter方法设置漏洞库路由
-	routes.SetupRouter(r)
+	log.Println("路由设置完成")
 
 	// 获取端口，默认为8000
 	port := getEnv("PORT", "8000")
@@ -134,23 +144,21 @@ func main() {
 }
 
 func setupRoutes(r *gin.Engine, userController *controllers.UserController, vulnController *controllers.VulnerabilityController, reportController *controllers.ReportController, aiAnalysisController *controllers.AIAnalysisController, assetController *controllers.AssetController) {
-	// 处理重复路径问题：添加一个前缀为"/api/api"的路由组，将请求重定向到正确的路径
-	apiRedirect := r.Group("/api/api")
-	{
-		// 处理/api/api/auth/login重复路径
-		apiRedirect.POST("/auth/login", userController.Login)
+	log.Println("正在创建漏洞库服务和控制器...")
+	// 创建漏洞库服务
+	vulnDBService := services.NewVulnDatabaseService(config.Database)
+	vulnDBController := routes.NewVulnDatabaseController(vulnDBService)
+	log.Println("漏洞库服务和控制器创建完成")
 
-		// 其他可能的重复路径 - 可根据需要添加更多
-		apiRedirect.Any("/*path", func(c *gin.Context) {
-			// 获取path参数
-			path := c.Param("path")
-			// 重定向到正确的路径
-			c.Request.URL.Path = "/api" + path
-			// 继续路由处理
-			r.HandleContext(c)
-		})
+	// 导入初始数据
+	log.Println("正在导入漏洞库初始数据...")
+	if err := vulnDBService.ImportInitialData(routes.GetInitialVulnData()); err != nil {
+		log.Printf("导入初始漏洞数据失败: %v", err)
+	} else {
+		log.Println("漏洞库初始数据导入完成")
 	}
 
+	log.Println("正在设置公共路由...")
 	// 公共路由
 	public := r.Group("/api")
 	{
@@ -181,6 +189,7 @@ func setupRoutes(r *gin.Engine, userController *controllers.UserController, vuln
 			vulnerabilities.PUT("/:id", vulnController.UpdateVulnerability)
 			vulnerabilities.DELETE("/:id", vulnController.DeleteVulnerability)
 			vulnerabilities.POST("/import", vulnController.ImportVulnerabilities)
+			vulnerabilities.POST("/import-from-vulndb", vulnController.ImportFromVulnDatabase)
 		}
 
 		// 用户相关路由
@@ -196,6 +205,16 @@ func setupRoutes(r *gin.Engine, userController *controllers.UserController, vuln
 
 		// 仪表盘数据
 		protected.GET("/dashboard", userController.GetDashboardData)
+
+		// 添加漏洞库的受保护路由
+		vulnDatabase := protected.Group("/vulndatabase")
+		{
+			vulnDatabase.GET("", vulnDBController.SearchVulnDatabase)
+			vulnDatabase.GET("/:cveId", vulnDBController.GetVulnerabilityByCveID)
+			vulnDatabase.POST("", vulnDBController.CreateVulnerability)
+			vulnDatabase.PUT("/:cveId", vulnDBController.UpdateVulnerability)
+			vulnDatabase.DELETE("/:cveId", vulnDBController.DeleteVulnerability)
+		}
 
 		// 报告
 		reports := protected.Group("/reports")
@@ -226,6 +245,7 @@ func setupRoutes(r *gin.Engine, userController *controllers.UserController, vuln
 			// 资产与漏洞关联
 			assets.GET("/:id/vulnerabilities", assetController.GetAssetVulnerabilities)
 			assets.POST("/:id/vulnerabilities/:vulnId", assetController.AddVulnerabilityToAsset)
+			assets.POST("/:id/vulnerabilities", assetController.AddVulnerabilityToAsset)
 			assets.DELETE("/:id/vulnerabilities/:vulnId", assetController.RemoveVulnerabilityFromAsset)
 
 			// 资产备注

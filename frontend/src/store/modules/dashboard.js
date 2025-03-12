@@ -97,7 +97,15 @@ const actions = {
     try {
       commit('SET_LOADING', true)
       
-      const response = await axios.get('/dashboard')
+      // 修正API路径
+      const dashboardPath = '/api/dashboard'
+      console.log('请求仪表盘数据路径:', {
+        baseURL: axios.defaults.baseURL,
+        path: dashboardPath,
+        fullURL: `${axios.defaults.baseURL}${dashboardPath}`
+      })
+      
+      const response = await axios.get(dashboardPath)
       
       // 解析仪表盘数据
       const dashboardData = response.data

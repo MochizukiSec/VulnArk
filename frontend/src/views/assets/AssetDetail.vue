@@ -385,28 +385,49 @@ export default {
     
     // 搜索漏洞
     const searchVulnerabilities = async () => {
-      if (!searchForm.searchTerm && searchForm.searchTerm.trim() === '') {
+      if (!searchForm.searchTerm || searchForm.searchTerm.trim() === '') {
         ElMessage.warning('请输入搜索内容')
         return
       }
       
       searchLoading.value = true
       try {
+        // 将原始参数格式传递给API服务，让API服务内部处理参数转换
         const params = {
           searchTerm: searchForm.searchTerm,
           limit: 50
         }
         
+        console.log('开始搜索漏洞，原始请求参数:', params)
+        
+        // 尝试使用后端API搜索
         const response = await vulnerabilityApi.searchVulnerabilities(params)
-        searchResults.value = response.data.vulnerabilities || []
+        console.log('搜索漏洞响应:', response.data)
+        
+        // 处理搜索结果
+        searchResults.value = response.data.items || response.data.vulnerabilities || []
         
         // 过滤掉已关联的漏洞
-        searchResults.value = searchResults.value.filter(vuln => 
-          !vulnerabilities.value.some(v => v.id === vuln.id)
-        )
+        searchResults.value = searchResults.value.filter(vuln => {
+          // 检查漏洞ID字段，适应不同的API返回格式
+          const vulnId = vuln.id || vuln._id || vuln.cveId
+          return !vulnerabilities.value.some(v => 
+            (v.id === vulnId) || (v.cveId && v.cveId === vuln.cveId)
+          )
+        })
+        
+        if (searchResults.value.length === 0) {
+          ElMessage.info('没有找到匹配的漏洞或所有匹配漏洞已关联')
+        }
       } catch (error) {
-        console.error('搜索漏洞失败:', error)
-        ElMessage.error('搜索漏洞失败，请重试')
+        console.error('搜索漏洞失败详情:', error)
+        console.error('请求配置:', error.config)
+        console.error('响应状态:', error.response?.status)
+        console.error('响应数据:', error.response?.data)
+        if (error.request) {
+          console.error('请求信息:', error.request)
+        }
+        ElMessage.error(`搜索漏洞失败: ${error.response?.data?.message || error.message || '请重试'}`)
       } finally {
         searchLoading.value = false
       }
@@ -414,7 +435,11 @@ export default {
     
     // 选择漏洞
     const handleVulnerabilitySelect = (row) => {
-      const index = selectedVulnerabilities.value.findIndex(v => v.id === row.id)
+      // 检查漏洞ID字段，适应不同的API返回格式
+      const vulnId = row.id || row._id || row.cveId
+      const index = selectedVulnerabilities.value.findIndex(v => 
+        (v.id === vulnId) || (v.cveId && v.cveId === row.cveId)
+      )
       
       if (index === -1) {
         selectedVulnerabilities.value.push(row)
@@ -425,28 +450,98 @@ export default {
     
     // 判断漏洞是否可选
     const isSelectable = (row) => {
-      return !vulnerabilities.value.some(v => v.id === row.id)
+      // 检查漏洞ID字段，适应不同的API返回格式
+      const vulnId = row.id || row._id || row.cveId
+      return !vulnerabilities.value.some(v => 
+        (v.id === vulnId) || (v.cveId && v.cveId === row.cveId)
+      )
     }
     
     // 添加选中的漏洞
     const addSelectedVulnerabilities = async () => {
       if (selectedVulnerabilities.value.length === 0) return
       
-      const promises = selectedVulnerabilities.value.map(vuln => 
-        assetApi.addVulnerabilityToAsset(route.params.id, vuln.id)
-      )
-      
       try {
+        // 处理每个选中的漏洞
+        const promises = selectedVulnerabilities.value.map(async vuln => {
+          try {
+            // 获取漏洞ID，适应不同的API结构
+            const vulnId = vuln.id || vuln._id
+            
+            // 如果是漏洞库返回的结构，先创建漏洞再关联
+            if (!vulnId && vuln.cveId) {
+              // 需要先导入漏洞，再关联
+              console.log('导入漏洞库中的漏洞:', vuln)
+              const vulnerabilityData = {
+                title: vuln.title,
+                description: vuln.description || '',
+                cve: vuln.cveId,
+                cvss: vuln.cvss || 0,
+                severity: vuln.severity || 'medium',
+                remediation: vuln.remediation || vuln.solution || '',
+                references: vuln.references || [],
+                tags: vuln.tags || []
+              }
+              
+              console.log('准备导入漏洞数据:', vulnerabilityData)
+              
+              // 使用API服务导入漏洞
+              const importResponse = await vulnerabilityApi.importFromVulnDatabase(vulnerabilityData)
+              console.log('漏洞导入响应:', importResponse.data)
+              
+              const newVulnId = importResponse.data.id || importResponse.data.vulnerabilityId || importResponse.data._id
+              if (newVulnId) {
+                console.log('新漏洞ID:', newVulnId, '准备关联到资产:', route.params.id)
+                try {
+                  const relationResponse = await assetApi.addVulnerabilityToAsset(route.params.id, newVulnId)
+                  console.log('漏洞关联响应:', relationResponse)
+                  return relationResponse
+                } catch (relationError) {
+                  console.error('关联新导入漏洞时出错:', relationError.response || relationError)
+                  throw relationError
+                }
+              } else {
+                console.error('导入响应中找不到漏洞ID:', importResponse.data)
+                throw new Error('导入漏洞失败：未返回有效的漏洞ID')
+              }
+            } else {
+              // 直接关联已有漏洞
+              console.log('关联已有漏洞:', vulnId, '到资产:', route.params.id)
+              try {
+                const relationResponse = await assetApi.addVulnerabilityToAsset(route.params.id, vulnId)
+                console.log('漏洞关联响应:', relationResponse)
+                return relationResponse
+              } catch (relationError) {
+                console.error('关联已有漏洞时出错:', relationError.response || relationError)
+                throw relationError
+              }
+            }
+          } catch (error) {
+            console.error('处理单个漏洞时出错:', error.response || error)
+            throw error // 重新抛出错误以便Promise.all捕获
+          }
+        })
+        
         await Promise.all(promises)
         ElMessage.success('漏洞关联成功')
         dialogVisible.value = false
         selectedVulnerabilities.value = []
         searchResults.value = []
         searchForm.searchTerm = ''
-        await fetchAssetVulnerabilities() // 刷新漏洞列表
+        
+        // 刷新漏洞列表
+        await fetchAssetVulnerabilities()
       } catch (error) {
-        console.error('关联漏洞失败:', error)
-        ElMessage.error('关联漏洞失败，请重试')
+        console.error('关联漏洞失败详情:', error)
+        if (error.response) {
+          console.error('响应状态:', error.response.status)
+          console.error('响应数据:', error.response.data)
+          console.error('请求配置:', error.config)
+          if (error.request) {
+            console.error('请求信息:', error.request)
+          }
+        }
+        ElMessage.error(`关联漏洞失败: ${error.response?.data?.message || error.message || '服务器内部错误，请检查后端日志'}`)
       }
     }
     

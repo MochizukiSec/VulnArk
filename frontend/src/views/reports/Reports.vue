@@ -104,6 +104,14 @@
                         </div>
                       </template>
                     </el-option>
+                    <el-option label="文本文件" value="text">
+                      <template #default>
+                        <div class="report-option">
+                          <i class="el-icon-document option-icon text"></i>
+                          <span>文本文件</span>
+                        </div>
+                      </template>
+                    </el-option>
                   </el-select>
                 </el-form-item>
               </el-col>
@@ -236,7 +244,7 @@
                   {{ getReportTypeText(report.type) }}
                 </el-tag>
                 <div class="report-format">
-                  {{ report.format.toUpperCase() }}
+                  {{ report.format ? report.format.toUpperCase() : '' }}
                 </div>
               </div>
               
@@ -268,8 +276,8 @@
           <!-- 分页 -->
           <div class="pagination-container">
             <el-pagination
-              v-model:currentPage="pagination.page"
-              v-model:page-size="pagination.pageSize"
+              :current-page="pagination.page"
+              :page-size="pagination.pageSize"
               :page-sizes="[10, 20, 50]"
               layout="total, sizes, prev, pager, next, jumper"
               :total="pagination.total"
@@ -442,6 +450,18 @@ export default {
         return
       }
       
+      // 检查用户是否已登录并尝试刷新token状态
+      if (!store.getters['auth/isAuthenticated']) {
+        // 尝试刷新token状态
+        const refreshed = await store.dispatch('auth/refreshTokenState')
+        
+        if (!refreshed) {
+          ElMessage.error('您需要登录才能生成报告')
+          // 可以选择重定向到登录页面
+          return
+        }
+      }
+      
       if (!reportForm.name) {
         // 自动生成报告名称
         const reportTypes = {
@@ -454,6 +474,13 @@ export default {
       }
       
       try {
+        // 直接从localStorage获取token进行检查
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未找到授权令牌，请重新登录')
+          return
+        }
+        
         // 准备请求数据
         const reportData = {
           name: reportForm.name,
@@ -468,6 +495,12 @@ export default {
         // 创建报告
         await store.dispatch('report/createReport', reportData)
         
+        // 显示成功消息
+        ElMessage.success({
+          message: '报告生成请求已提交，后端功能待完善',
+          duration: 5000
+        })
+        
         // 重置表单
         reportForm.name = ''
         reportForm.description = ''
@@ -476,16 +509,44 @@ export default {
         loadReports()
       } catch (error) {
         console.error('生成报告失败:', error)
+        
+        // 检查是否是授权错误
+        if (error.response && error.response.status === 401) {
+          ElMessage.error({
+            message: '身份验证失败，请重新登录后再试',
+            duration: 5000
+          })
+          // 可以选择重定向到登录页面
+          // router.push('/login')
+        } else {
+          ElMessage.error({
+            message: '报告生成失败: ' + (error.response?.data?.error || '后端功能未完全实现，请等待功能完善'),
+            duration: 5000
+          })
+        }
       }
     }
     
     // 下载报告
     const downloadReport = (report) => {
       if (report.file_url) {
-        // 实际应用中，这里应该进行实际的下载操作
-        window.open(report.file_url, '_blank')
+        try {
+          // 获取完整的URL
+          let downloadUrl = report.file_url;
+          
+          // 如果不是绝对URL，添加API基础路径
+          if (!downloadUrl.startsWith('http') && !downloadUrl.startsWith('/api')) {
+            downloadUrl = '/api' + downloadUrl;
+          }
+          
+          // 打开链接
+          window.open(downloadUrl, '_blank');
+        } catch (error) {
+          console.error('下载报告失败:', error);
+          ElMessage.error('下载报告失败，请稍后再试');
+        }
       } else {
-        ElMessage.warning('报告文件尚未生成完成，请稍后再试')
+        ElMessage.warning('报告文件尚未生成完成，请稍后再试');
       }
     }
     
@@ -709,6 +770,10 @@ export default {
     
     &.html {
       color: #E6A23C;
+    }
+    
+    &.text {
+      color: #909399;
     }
   }
 }

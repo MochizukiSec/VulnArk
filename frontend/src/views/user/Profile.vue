@@ -29,6 +29,10 @@
               <span class="info-label">加入时间</span>
               <span class="info-value">{{ $filters.formatDateOnly(user.createdAt) }}</span>
             </div>
+            <div class="info-item">
+              <span class="info-label">上次登录</span>
+              <span class="info-value">{{ $filters.formatDateOnly(user.lastLogin) }}</span>
+            </div>
           </div>
         </el-card>
       </el-col>
@@ -268,7 +272,15 @@ export default {
     
     // 页面加载时初始化
     onMounted(() => {
-      initForm()
+      // 获取最新的用户信息
+      store.dispatch('user/fetchCurrentUser')
+        .then(() => {
+          console.log('用户信息已更新')
+          initForm()
+        })
+        .catch(error => {
+          console.error('获取用户信息失败:', error)
+        })
     })
     
     return {

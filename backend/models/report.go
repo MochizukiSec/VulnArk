@@ -6,90 +6,109 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// 报告类型常量
+// 报告状态常量
 const (
-	ReportTypeSummary    = "summary"    // 摘要报告
-	ReportTypeDetailed   = "detailed"   // 详细报告
-	ReportTypeCompliance = "compliance" // 合规报告
-	ReportTypeTrend      = "trend"      // 趋势分析
+	ReportStatusPending   = "pending"
+	ReportStatusCompleted = "completed"
+	ReportStatusFailed    = "failed"
 )
 
 // 报告格式常量
 const (
-	ReportFormatPDF   = "pdf"   // PDF格式
-	ReportFormatExcel = "excel" // Excel格式
-	ReportFormatWord  = "word"  // Word格式
-	ReportFormatHTML  = "html"  // HTML格式
+	ReportFormatPDF   = "pdf"
+	ReportFormatExcel = "excel"
+	ReportFormatWord  = "word"
+	ReportFormatHTML  = "html"
+	ReportFormatText  = "text"
+)
+
+// 报告类型常量
+const (
+	ReportTypeSummary    = "summary"
+	ReportTypeDetailed   = "detailed"
+	ReportTypeCompliance = "compliance"
+	ReportTypeTrend      = "trend"
 )
 
 // Report 报告模型
 type Report struct {
-	ID              primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name            string             `bson:"name" json:"name"`                           // 报告名称
-	Type            string             `bson:"type" json:"type"`                           // 报告类型
-	Format          string             `bson:"format" json:"format"`                       // 报告格式
-	DateRange       [2]time.Time       `bson:"date_range" json:"date_range"`               // 报告时间范围
-	Severities      []string           `bson:"severities" json:"severities"`               // 包含的漏洞严重程度
-	FileURL         string             `bson:"file_url" json:"file_url"`                   // 报告文件URL
-	GeneratedBy     primitive.ObjectID `bson:"generated_by" json:"generated_by"`           // 生成者ID
-	GeneratedByInfo UserBasicInfo      `bson:"generated_by_info" json:"generated_by_info"` // 生成者基本信息
-	Status          string             `bson:"status" json:"status"`                       // 状态：pending, completed, failed
-	Description     string             `bson:"description" json:"description"`             // 报告描述
-	CreatedAt       time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt       time.Time          `bson:"updated_at" json:"updated_at"`
+	ID          primitive.ObjectID `json:"id" bson:"_id"`
+	Name        string             `json:"name" bson:"name"`
+	Type        string             `json:"type" bson:"type"`
+	Format      string             `json:"format" bson:"format"`
+	Status      string             `json:"status" bson:"status"`
+	Description string             `json:"description" bson:"description"`
+	FileURL     string             `json:"file_url,omitempty" bson:"file_url,omitempty"`
+	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at,omitempty" bson:"updated_at,omitempty"`
+	CreatedBy   ReportUser         `json:"created_by" bson:"created_by"`
+	Metadata    ReportMetadata     `json:"metadata" bson:"metadata"`
 }
 
-// UserBasicInfo 用户基本信息（用于嵌入到其他文档中）
-type UserBasicInfo struct {
-	ID        primitive.ObjectID `bson:"id" json:"id"`
-	Username  string             `bson:"username" json:"username"`
-	FirstName string             `bson:"first_name" json:"first_name"`
-	LastName  string             `bson:"last_name" json:"last_name"`
+// ReportUser 报告创建者信息
+type ReportUser struct {
+	ID   primitive.ObjectID `json:"id" bson:"id"`
+	Name string             `json:"name,omitempty" bson:"name,omitempty"`
 }
 
-// ReportRequest 创建报告的请求参数
-type ReportRequest struct {
+// ReportMetadata 报告元数据
+type ReportMetadata struct {
+	StartDate  time.Time `json:"start_date,omitempty" bson:"start_date,omitempty"`
+	EndDate    time.Time `json:"end_date,omitempty" bson:"end_date,omitempty"`
+	Severities []string  `json:"severities,omitempty" bson:"severities,omitempty"`
+	Statuses   []string  `json:"statuses,omitempty" bson:"statuses,omitempty"`
+}
+
+// CreateReportRequest 创建报告请求
+type CreateReportRequest struct {
 	Name        string    `json:"name" binding:"required"`
-	Type        string    `json:"type" binding:"required,oneof=summary detailed compliance trend"`
-	Format      string    `json:"format" binding:"required,oneof=pdf excel word html"`
-	StartDate   time.Time `json:"start_date" binding:"required"`
-	EndDate     time.Time `json:"end_date" binding:"required"`
-	Severities  []string  `json:"severities" binding:"required"`
+	Type        string    `json:"type" binding:"required"`
+	Format      string    `json:"format" binding:"required"`
 	Description string    `json:"description"`
+	StartDate   time.Time `json:"start_date"`
+	EndDate     time.Time `json:"end_date"`
+	Severities  []string  `json:"severities"`
+	Statuses    []string  `json:"statuses"`
 }
 
-// ReportResponse 报告响应数据
-type ReportResponse struct {
-	ID              string       `json:"id"`
-	Name            string       `json:"name"`
-	Type            string       `json:"type"`
-	Format          string       `json:"format"`
-	DateRange       [2]time.Time `json:"date_range"`
-	Severities      []string     `json:"severities"`
-	FileURL         string       `json:"file_url"`
-	GeneratedBy     string       `json:"generated_by"`
-	GeneratedByName string       `json:"generated_by_name"`
-	Status          string       `json:"status"`
-	Description     string       `json:"description"`
-	CreatedAt       time.Time    `json:"created_at"`
-	UpdatedAt       time.Time    `json:"updated_at"`
+// SummaryReport 摘要报告
+type SummaryReport struct {
+	TotalVulnerabilities    int                       `json:"total_vulnerabilities"`
+	NewVulnerabilities      int                       `json:"new_vulnerabilities"`
+	ResolvedVulnerabilities int                       `json:"resolved_vulnerabilities"`
+	SeverityDistribution    map[string]int            `json:"severity_distribution"`
+	StatusDistribution      map[string]int            `json:"status_distribution"`
+	TopVulnerableAssets     []AssetVulnCount          `json:"top_vulnerable_assets"`
+	VulnerabilityTrend      []DailyVulnerabilityCount `json:"vulnerability_trend"`
+	AverageTimeToResolution float64                   `json:"average_time_to_resolution"`
+	StartDate               time.Time                 `json:"start_date"`
+	EndDate                 time.Time                 `json:"end_date"`
+	GeneratedAt             time.Time                 `json:"generated_at"`
 }
 
-// ToResponse 将报告模型转换为响应数据
-func (r *Report) ToResponse() ReportResponse {
-	return ReportResponse{
-		ID:              r.ID.Hex(),
-		Name:            r.Name,
-		Type:            r.Type,
-		Format:          r.Format,
-		DateRange:       r.DateRange,
-		Severities:      r.Severities,
-		FileURL:         r.FileURL,
-		GeneratedBy:     r.GeneratedBy.Hex(),
-		GeneratedByName: r.GeneratedByInfo.FirstName + " " + r.GeneratedByInfo.LastName,
-		Status:          r.Status,
-		Description:     r.Description,
-		CreatedAt:       r.CreatedAt,
-		UpdatedAt:       r.UpdatedAt,
-	}
+// DetailedReport 详细报告
+type DetailedReport struct {
+	SummaryInfo      SummaryReport     `json:"summary_info"`
+	Vulnerabilities  []Vulnerability   `json:"vulnerabilities"`
+	AffectedAssets   []Asset           `json:"affected_assets"`
+	StartDate        time.Time         `json:"start_date"`
+	EndDate          time.Time         `json:"end_date"`
+	GeneratedAt      time.Time         `json:"generated_at"`
+	FilterConditions map[string]string `json:"filter_conditions"`
+}
+
+// AssetVulnCount 资产漏洞计数
+type AssetVulnCount struct {
+	AssetID            primitive.ObjectID `json:"asset_id"`
+	AssetName          string             `json:"asset_name"`
+	AssetType          string             `json:"asset_type"`
+	VulnerabilityCount int                `json:"vulnerability_count"`
+}
+
+// DailyVulnerabilityCount 每日漏洞计数
+type DailyVulnerabilityCount struct {
+	Date          time.Time `json:"date"`
+	NewCount      int       `json:"new_count"`
+	ResolvedCount int       `json:"resolved_count"`
+	TotalCount    int       `json:"total_count"`
 }

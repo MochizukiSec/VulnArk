@@ -53,13 +53,51 @@ const mutations = {
 }
 
 const actions = {
+  // 获取当前登录用户的最新信息
+  async fetchCurrentUser({ commit, dispatch }) {
+    try {
+      commit('SET_LOADING', true)
+      commit('SET_ERROR', null)
+      
+      const response = await axios.get('/api/users/me')
+      const userData = response.data
+      
+      // 更新auth模块中的用户信息
+      commit('auth/UPDATE_USER', userData, { root: true })
+      
+      // 更新本地存储
+      localStorage.setItem('user', JSON.stringify(userData))
+      
+      return userData
+    } catch (error) {
+      console.error('获取当前用户信息失败:', error)
+      const errorMessage = error.response?.data?.error || '获取用户信息失败'
+      commit('SET_ERROR', errorMessage)
+      
+      if (error.response?.status === 401) {
+        // 如果未授权，可能是token过期，尝试刷新token或重定向到登录页
+        dispatch('auth/refreshTokenState', null, { root: true })
+      }
+      
+      throw error
+    } finally {
+      commit('SET_LOADING', false)
+    }
+  },
+  
   // 获取所有用户
   async fetchUsers({ commit }, { page = 1, limit = 10, search = '', role = '', status = '' } = {}) {
     commit('SET_LOADING', true)
     commit('SET_ERROR', null)
     
     try {
-      const response = await axios.get('/users', {
+      console.log('获取用户列表:', {
+        baseURL: axios.defaults.baseURL,
+        endpoint: '/api/users',
+        params: { page, perPage: limit, search, role, status }
+      })
+      
+      const response = await axios.get('/api/users', {
         params: {
           page,
           perPage: limit,
@@ -131,7 +169,13 @@ const actions = {
         status: userData.status || 'active'
       }
       
-      const response = await axios.post('/users', requestData)
+      console.log('创建用户:', {
+        baseURL: axios.defaults.baseURL,
+        endpoint: '/api/users',
+        data: { ...requestData, password: '******' } // 密码不显示
+      })
+      
+      const response = await axios.post('/api/users', requestData)
       
       // 适应不同的响应格式
       let user = null
@@ -281,7 +325,7 @@ const actions = {
     try {
       commit('SET_LOADING', true)
       
-      const response = await axios.put('/users/me', profileData)
+      const response = await axios.put('/api/users/me', profileData)
       
       // 更新本地存储的用户信息
       dispatch('auth/updateUserInfo', profileData, { root: true })

@@ -6,14 +6,45 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import axios from 'axios'
 import moment from 'moment'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 // 配置axios默认值
-// 使用相对路径，这样会自动匹配当前域名
-axios.defaults.baseURL = process.env.VUE_APP_API_URL || ''
+// 在开发环境中使用完整的基础URL，在生产环境中使用相对路径
+if (process.env.NODE_ENV === 'development') {
+  // 开发环境使用完整URL，包括域名和端口，但不包含/api前缀
+  axios.defaults.baseURL = process.env.VUE_APP_API_URL || 'http://localhost:8000'
+  console.log('开发环境设置baseURL:', axios.defaults.baseURL)
+} else {
+  // 生产环境使用相对路径，自动匹配当前域名
+  axios.defaults.baseURL = ''
+  console.log('生产环境设置baseURL为空')
+}
+
+// 记录当前axios配置
+console.log('系统环境:', process.env.NODE_ENV)
+console.log('Axios基础URL配置:', axios.defaults.baseURL)
+
 axios.interceptors.request.use(config => {
   const token = store.state.auth.token
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+    console.log(`请求添加令牌: ${config.url}`, {
+      tokenExists: !!token,
+      tokenPrefix: token ? token.substring(0, 10) + '...' : '',
+      headers: config.headers
+    })
+  } else {
+    console.warn(`请求无令牌: ${config.url}`, {
+      storeAuthState: store.state.auth,
+      localStorageToken: localStorage.getItem('token') ? '存在' : '不存在'
+    })
+    
+    // 尝试从localStorage直接获取token作为备选方案
+    const backupToken = localStorage.getItem('token')
+    if (backupToken) {
+      config.headers.Authorization = `Bearer ${backupToken}`
+      console.log('已从localStorage直接获取令牌')
+    }
   }
   return config
 })
@@ -68,6 +99,11 @@ if (userStr === 'undefined' || (userStr && userStr.trim() === '')) {
 // 创建应用实例
 const app = createApp(App)
 
+// 注册Element Plus图标
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component)
+}
+
 // 注册全局实用工具
 app.config.globalProperties.$moment = moment
 app.config.globalProperties.$axios = axios
@@ -75,11 +111,11 @@ app.config.globalProperties.$axios = axios
 // 注册全局过滤器
 app.config.globalProperties.$filters = {
   formatDate(value) {
-    if (!value) return ''
+    if (!value) return '未知'
     return moment(value).format('YYYY-MM-DD HH:mm')
   },
   formatDateOnly(value) {
-    if (!value) return ''
+    if (!value) return '未知'
     return moment(value).format('YYYY-MM-DD')
   },
   capitalize(value) {

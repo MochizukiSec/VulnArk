@@ -82,15 +82,19 @@ const mutations = {
 
 const actions = {
   // 获取漏洞库数据
-  async fetchVulnerabilities({ commit, state }) {
+  async fetchVulnerabilities({ commit, state }, payload = {}) {
     try {
       commit('SET_LOADING', true)
       commit('SET_ERROR', null)
       
-      // 构建查询参数
-      const params = { ...state.searchParams }
+      const params = { ...state.searchParams, ...payload }
       
-      // 调用API获取漏洞库数据
+      console.log('获取漏洞库列表:', {
+        baseURL: axios.defaults.baseURL,
+        endpoint: '/api/vulndatabase',
+        params
+      })
+      
       const response = await axios.get('/api/vulndatabase', { params })
       
       // 更新状态

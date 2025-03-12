@@ -201,6 +201,11 @@ func (c *VulnDatabaseController) DeleteVulnerability(ctx *gin.Context) {
 	})
 }
 
+// GetInitialVulnData 返回初始漏洞数据，供其他包使用
+func GetInitialVulnData() []models.VulnDBEntry {
+	return initialVulnData
+}
+
 // JWTAuth 临时中间件
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -228,12 +233,5 @@ func SetupRouter(r *gin.Engine) {
 		apiGroup.POST("/vulndatabase", vulnDBController.CreateVulnerability)
 		apiGroup.PUT("/vulndatabase/:cveId", vulnDBController.UpdateVulnerability)
 		apiGroup.DELETE("/vulndatabase/:cveId", vulnDBController.DeleteVulnerability)
-
-		// 处理前端重复的/api前缀
-		apiGroup.GET("/api/vulndatabase", vulnDBController.SearchVulnDatabase)
-		apiGroup.GET("/api/vulndatabase/:cveId", vulnDBController.GetVulnerabilityByCveID)
-		apiGroup.POST("/api/vulndatabase", vulnDBController.CreateVulnerability)
-		apiGroup.PUT("/api/vulndatabase/:cveId", vulnDBController.UpdateVulnerability)
-		apiGroup.DELETE("/api/vulndatabase/:cveId", vulnDBController.DeleteVulnerability)
 	}
 }

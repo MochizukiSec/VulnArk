@@ -172,7 +172,12 @@ export default {
       loading.value = true
       
       try {
-        console.log('获取漏洞详情，URL:', axios.defaults.baseURL + `/api/vulndatabase/${cveId}`)
+        console.log('获取漏洞详情:', {
+          baseURL: axios.defaults.baseURL,
+          endpoint: `/api/vulndatabase/${cveId}`,
+          cveId
+        })
+        
         const response = await axios.get(`/api/vulndatabase/${cveId}`)
         console.log('获取漏洞详情成功:', response.data)
         vulnerability.value = response.data

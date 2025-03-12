@@ -258,36 +258,27 @@ export default {
     
     // 获取漏洞库数据
     const fetchVulnerabilities = async () => {
-      loading.value = true
-      
       try {
+        loading.value = true
+        
         // 构建查询参数
         const params = {
           page: currentPage.value,
           perPage: pageSize.value,
-          q: searchParams.searchTerm,
+          searchTerm: searchParams.searchTerm,
+          severity: searchParams.severity,
+          year: searchParams.year,
+          cvssRange: searchParams.cvssRange,
           sortBy: searchParams.sortBy,
           sortOrder: searchParams.sortOrder
         }
         
-        // 添加其他过滤条件
-        if (searchParams.year) {
-          params.year = searchParams.year
-        }
+        console.log('请求漏洞库数据:', {
+          baseURL: axios.defaults.baseURL,
+          endpoint: '/api/vulndatabase',
+          params
+        })
         
-        if (searchParams.severity) {
-          params.severity = searchParams.severity
-        }
-        
-        if (searchParams.cvssRange) {
-          const [min, max] = searchParams.cvssRange.split('-')
-          params.cvssMin = min
-          params.cvssMax = max
-        }
-        
-        // 发送API请求
-        console.log('发送查询:', params)
-        console.log('请求URL:', axios.defaults.baseURL + '/api/vulndatabase')
         const response = await axios.get('/api/vulndatabase', { params })
         
         console.log('成功获取漏洞库数据:', response.data)
@@ -311,6 +302,7 @@ export default {
     
     // 搜索处理
     const handleSearch = () => {
+      console.log('执行搜索，搜索参数:', searchParams)
       currentPage.value = 1 // 重置到第一页
       fetchVulnerabilities()
     }

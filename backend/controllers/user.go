@@ -16,6 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UserController 用户相关控制器
@@ -101,14 +102,170 @@ func (c *UserController) Login(ctx *gin.Context) {
 
 // GetCurrentUser 获取当前用户信息
 func (c *UserController) GetCurrentUser(ctx *gin.Context) {
-	// 实现获取当前用户信息逻辑
-	ctx.JSON(http.StatusOK, gin.H{"message": "获取当前用户功能待实现"})
+	// 从上下文获取用户ID
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "未认证的用户"})
+		return
+	}
+
+	// 转换为ObjectID
+	id, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "无效的用户ID", "details": err.Error()})
+		return
+	}
+
+	// 查询用户信息
+	usersCollection := config.GetCollection(config.UsersCollection)
+	dbCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var user models.User
+	err = usersCollection.FindOne(dbCtx, bson.M{"_id": id}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+		} else {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "获取用户信息失败", "details": err.Error()})
+		}
+		return
+	}
+
+	// 返回用户信息（不包含密码）
+	ctx.JSON(http.StatusOK, user.ToResponse())
 }
 
 // UpdateCurrentUser 更新当前用户信息
 func (c *UserController) UpdateCurrentUser(ctx *gin.Context) {
-	// 实现更新当前用户信息逻辑
-	ctx.JSON(http.StatusOK, gin.H{"message": "更新当前用户功能待实现"})
+	// 从上下文获取用户ID
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "未认证的用户"})
+		return
+	}
+
+	// 解析请求体
+	var updateData struct {
+		FirstName       *string `json:"firstName"`
+		LastName        *string `json:"lastName"`
+		Department      *string `json:"department"`
+		ProfilePicture  *string `json:"profilePicture"`
+		CurrentPassword *string `json:"currentPassword"`
+		NewPassword     *string `json:"newPassword"`
+	}
+
+	if err := ctx.ShouldBindJSON(&updateData); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求数据", "details": err.Error()})
+		return
+	}
+
+	// 转换为ObjectID
+	id, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "无效的用户ID", "details": err.Error()})
+		return
+	}
+
+	// 获取用户集合
+	usersCollection := config.GetCollection(config.UsersCollection)
+	dbCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// 如果要更新密码，需要验证当前密码
+	if updateData.CurrentPassword != nil && updateData.NewPassword != nil {
+		var user models.User
+		err := usersCollection.FindOne(dbCtx, bson.M{"_id": id}).Decode(&user)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				ctx.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+			} else {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": "获取用户信息失败", "details": err.Error()})
+			}
+			return
+		}
+
+		// 验证当前密码
+		err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(*updateData.CurrentPassword))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "当前密码不正确"})
+			return
+		}
+
+		// 生成新密码哈希
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*updateData.NewPassword), bcrypt.DefaultCost)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "处理密码时出错", "details": err.Error()})
+			return
+		}
+
+		// 更新密码哈希
+		passwordHash := string(hashedPassword)
+		updateData.NewPassword = nil     // 清空，避免设置到updateDoc中
+		updateData.CurrentPassword = nil // 清空，避免设置到updateDoc中
+
+		// 更新操作
+		_, err = usersCollection.UpdateOne(
+			dbCtx,
+			bson.M{"_id": id},
+			bson.M{"$set": bson.M{
+				"password_hash": passwordHash,
+				"updated_at":    time.Now(),
+			}},
+		)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "更新密码失败", "details": err.Error()})
+			return
+		}
+	}
+
+	// 构建更新文档
+	updateDoc := bson.M{"updated_at": time.Now()}
+	if updateData.FirstName != nil {
+		updateDoc["first_name"] = *updateData.FirstName
+	}
+	if updateData.LastName != nil {
+		updateDoc["last_name"] = *updateData.LastName
+	}
+	if updateData.Department != nil {
+		updateDoc["department"] = *updateData.Department
+	}
+	if updateData.ProfilePicture != nil {
+		updateDoc["profile_picture"] = *updateData.ProfilePicture
+	}
+
+	// 如果有字段需要更新
+	if len(updateDoc) > 1 { // 至少有updated_at
+		result, err := usersCollection.UpdateOne(
+			dbCtx,
+			bson.M{"_id": id},
+			bson.M{"$set": updateDoc},
+		)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "更新用户信息失败", "details": err.Error()})
+			return
+		}
+
+		if result.MatchedCount == 0 {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+			return
+		}
+	}
+
+	// 获取更新后的用户信息
+	var updatedUser models.User
+	err = usersCollection.FindOne(dbCtx, bson.M{"_id": id}).Decode(&updatedUser)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "用户信息已更新，但无法获取更新后的数据",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "用户信息已成功更新",
+		"user":    updatedUser.ToResponse(),
+	})
 }
 
 // GetAllUsers 获取所有用户列表

@@ -43,6 +43,7 @@ type Asset struct {
 	Description     string                 `bson:"description" json:"description"`
 	Type            string                 `bson:"type" json:"type"`
 	Status          string                 `bson:"status" json:"status"`
+	Environment     string                 `bson:"environment" json:"environment"`
 	IPAddress       string                 `bson:"ip_address" json:"ipAddress"`
 	MACAddress      string                 `bson:"mac_address" json:"macAddress"`
 	Location        string                 `bson:"location" json:"location"`
@@ -80,6 +81,7 @@ type AssetCreate struct {
 	Description  string                 `json:"description"`
 	Type         string                 `json:"type" binding:"required"`
 	Status       string                 `json:"status" binding:"required"`
+	Environment  string                 `json:"environment"`
 	IPAddress    string                 `json:"ipAddress"`
 	MACAddress   string                 `json:"macAddress"`
 	Location     string                 `json:"location"`
@@ -102,6 +104,7 @@ type AssetUpdate struct {
 	Description  *string                `json:"description"`
 	Type         *string                `json:"type"`
 	Status       *string                `json:"status"`
+	Environment  *string                `json:"environment"`
 	IPAddress    *string                `json:"ipAddress"`
 	MACAddress   *string                `json:"macAddress"`
 	Location     *string                `json:"location"`
@@ -150,6 +153,7 @@ type AssetResponse struct {
 	Description  string                 `json:"description"`
 	Type         string                 `json:"type"`
 	Status       string                 `json:"status"`
+	Environment  string                 `json:"environment"`
 	IPAddress    string                 `json:"ipAddress"`
 	MACAddress   string                 `json:"macAddress"`
 	Location     string                 `json:"location"`
@@ -173,4 +177,25 @@ type AssetResponse struct {
 type AssetListResponse struct {
 	Assets     []AssetResponse `json:"assets"`
 	Pagination Pagination      `json:"pagination"`
+}
+
+// AssetImportOptions 导入资产时的选项
+type AssetImportOptions struct {
+	DuplicateStrategy string `json:"duplicateStrategy"` // 处理重复项的策略：skip, update, create_new
+	DefaultType       string `json:"defaultType"`       // 默认资产类型
+	DefaultStatus     string `json:"defaultStatus"`     // 默认资产状态
+	SendNotifications bool   `json:"sendNotifications"` // 是否发送通知
+}
+
+// AssetImportStats 导入结果统计
+type AssetImportStats struct {
+	Successful int `json:"successful"` // 成功导入的资产数
+	Duplicates int `json:"duplicates"` // 重复的资产数
+	Failed     int `json:"failed"`     // 导入失败的资产数
+}
+
+// AssetImportResponse 导入结果响应
+type AssetImportResponse struct {
+	Message string           `json:"message"` // 导入结果消息
+	Stats   AssetImportStats `json:"stats"`   // 导入统计
 }

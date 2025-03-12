@@ -29,6 +29,7 @@ const VulnDatabaseCreate = () => import('../views/vulndatabase/VulnDatabaseCreat
 const AssetList = () => import('../views/assets/AssetList.vue')
 const AssetDetail = () => import('../views/assets/AssetDetail.vue')
 const AssetForm = () => import('../views/assets/AssetForm.vue')
+const AssetImport = () => import('../views/assets/AssetImport.vue')
 
 // 路由配置
 const routes = [
@@ -146,6 +147,12 @@ const routes = [
         name: 'AssetCreate',
         component: AssetForm,
         meta: { requiresAuth: true, title: '创建资产' }
+      },
+      {
+        path: '/assets/import',
+        name: 'AssetImport',
+        component: AssetImport,
+        meta: { requiresAuth: true, title: '导入资产' }
       },
       {
         path: '/assets/:id',

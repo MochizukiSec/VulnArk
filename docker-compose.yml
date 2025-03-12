@@ -1,0 +1,33 @@
+version: '3'
+services:
+  mongodb:
+    container_name: 'mongodb'
+    image: mongo:latest  
+    environment:
+      - TZ=Asia/Shanghai
+      - MONGO_INITDB_DATABASE=vulnark_db
+    ports:
+      - "27017:27017"
+    restart: always
+
+  server:
+    container_name: 'server'
+    build: .
+    ports:
+      - "8080:8080"
+    links:
+      - mongodb
+    depends_on:
+      - mongodb
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+
+  frontend:
+    container_name: 'frontend'
+    restart: always
+    build: ./frontend
+    ports:
+      - 80:80
+    depends_on:
+      - server

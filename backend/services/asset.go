@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"time"
 
@@ -17,14 +18,14 @@ import (
 // AssetService 處理資產相關邏輯
 type AssetService struct {
 	assetsColl *mongo.Collection
-	vulnsColl  *mongo.Collection
+	db         *mongo.Database
 }
 
 // NewAssetService 創建資產服務實例
 func NewAssetService(db *mongo.Database) *AssetService {
 	return &AssetService{
 		assetsColl: config.GetCollection(config.AssetsCollection),
-		vulnsColl:  config.GetCollection(config.VulnerabilitiesCollection),
+		db:         db,
 	}
 }
 
@@ -37,6 +38,7 @@ func (s *AssetService) CreateAsset(ctx context.Context, create models.AssetCreat
 		Description:  create.Description,
 		Type:         create.Type,
 		Status:       create.Status,
+		Environment:  create.Environment,
 		IPAddress:    create.IPAddress,
 		MACAddress:   create.MACAddress,
 		Location:     create.Location,
@@ -98,6 +100,7 @@ func (s *AssetService) GetAssetResponse(ctx context.Context, id string) (*models
 		Description:  asset.Description,
 		Type:         asset.Type,
 		Status:       asset.Status,
+		Environment:  asset.Environment,
 		IPAddress:    asset.IPAddress,
 		MACAddress:   asset.MACAddress,
 		Location:     asset.Location,
@@ -141,6 +144,9 @@ func (s *AssetService) UpdateAsset(ctx context.Context, id string, update models
 	}
 	if update.Status != nil {
 		updateDoc["status"] = *update.Status
+	}
+	if update.Environment != nil {
+		updateDoc["environment"] = *update.Environment
 	}
 	if update.IPAddress != nil {
 		updateDoc["ip_address"] = *update.IPAddress
@@ -313,6 +319,7 @@ func (s *AssetService) SearchAssets(ctx context.Context, params models.AssetSear
 			Description:  asset.Description,
 			Type:         asset.Type,
 			Status:       asset.Status,
+			Environment:  asset.Environment,
 			IPAddress:    asset.IPAddress,
 			MACAddress:   asset.MACAddress,
 			Location:     asset.Location,
@@ -341,27 +348,116 @@ func (s *AssetService) SearchAssets(ctx context.Context, params models.AssetSear
 
 // AddVulnerabilityToAsset 將漏洞關聯到資產
 func (s *AssetService) AddVulnerabilityToAsset(ctx context.Context, assetID string, vulnID string) error {
+	fmt.Printf("开始关联漏洞到资产，资产ID: %s, 漏洞ID: %s\n", assetID, vulnID)
+
 	assetObjID, err := primitive.ObjectIDFromHex(assetID)
 	if err != nil {
-		return err
+		fmt.Printf("资产ID转换失败: %v\n", err)
+		return fmt.Errorf("无效的资产ID格式: %v", err)
 	}
 
 	vulnObjID, err := primitive.ObjectIDFromHex(vulnID)
 	if err != nil {
-		return err
+		fmt.Printf("漏洞ID转换失败: %v\n", err)
+		return fmt.Errorf("无效的漏洞ID格式: %v", err)
+	}
+
+	// 先检查资产是否存在
+	var asset models.Asset
+	err = s.assetsColl.FindOne(ctx, bson.M{"_id": assetObjID}).Decode(&asset)
+	if err != nil {
+		fmt.Printf("查找资产失败: %v\n", err)
+		return fmt.Errorf("找不到指定的资产: %v", err)
+	}
+
+	// 检查漏洞是否存在
+	var vuln models.Vulnerability
+	vulnErr := s.db.Collection("vulnerabilities").FindOne(ctx, bson.M{"_id": vulnObjID}).Decode(&vuln)
+
+	// 如果在系统漏洞集合中找不到，则先从漏洞库导入
+	if vulnErr != nil {
+		fmt.Printf("查找系统漏洞失败: %v，尝试从漏洞库导入\n", vulnErr)
+
+		// 从漏洞库获取漏洞
+		var vulnDBEntry models.VulnDBEntry
+		vulnDBErr := s.db.Collection("vulndatabase").FindOne(ctx, bson.M{"_id": vulnObjID}).Decode(&vulnDBEntry)
+		if vulnDBErr != nil {
+			fmt.Printf("从漏洞库查找漏洞也失败: %v\n", vulnDBErr)
+			return fmt.Errorf("无法找到指定的漏洞，既不在系统中也不在漏洞库中: %v", vulnDBErr)
+		}
+
+		// 从漏洞库条目创建新的系统漏洞
+		vulnObjID, _ := primitive.ObjectIDFromHex(vulnDBEntry.ID)
+		newVuln := models.Vulnerability{
+			ID:               vulnObjID,
+			Title:            vulnDBEntry.Title,
+			Description:      vulnDBEntry.Description,
+			CVE:              vulnDBEntry.CveId,
+			CVSS:             vulnDBEntry.Cvss,
+			Severity:         vulnDBEntry.Severity,
+			Status:           models.StatusOpen,
+			AffectedSystems:  []string{vulnDBEntry.AffectedSystems},
+			AffectedVersions: []string{},
+			Remediation:      vulnDBEntry.Solution,
+			References:       vulnDBEntry.References,
+			DiscoveredAt:     time.Now(),
+			ReportedAt:       time.Now(),
+			Tags:             vulnDBEntry.Tags,
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		}
+
+		// 插入新漏洞到系统
+		_, insertErr := s.db.Collection("vulnerabilities").InsertOne(ctx, newVuln)
+		if insertErr != nil {
+			fmt.Printf("自动导入漏洞到系统失败: %v\n", insertErr)
+			return fmt.Errorf("自动导入漏洞失败: %v", insertErr)
+		}
+
+		fmt.Printf("成功从漏洞库自动导入漏洞: %s\n", newVuln.Title)
 	}
 
 	// 更新資產，添加漏洞ID到列表
-	_, err = s.assetsColl.UpdateOne(
-		ctx,
-		bson.M{"_id": assetObjID},
-		bson.M{
-			"$addToSet": bson.M{"vulnerabilities": vulnObjID},
-			"$set":      bson.M{"updated_at": time.Now()},
-		},
-	)
+	// 首先读取资产，检查vulnerabilities字段
+	if asset.Vulnerabilities == nil {
+		// 如果不存在或为null，初始化为包含当前漏洞的数组
+		result, err := s.assetsColl.UpdateOne(
+			ctx,
+			bson.M{"_id": assetObjID},
+			bson.M{
+				"$set": bson.M{
+					"vulnerabilities": []primitive.ObjectID{vulnObjID},
+					"updated_at":      time.Now(),
+				},
+			},
+		)
 
-	return err
+		if err != nil {
+			fmt.Printf("初始化vulnerabilities数组失败: %v\n", err)
+			return fmt.Errorf("初始化vulnerabilities数组失败: %v", err)
+		}
+
+		fmt.Printf("创建vulnerabilities数组成功，匹配文档数: %d, 修改文档数: %d\n", result.MatchedCount, result.ModifiedCount)
+	} else {
+		// 如果已存在，使用$addToSet添加新的漏洞ID
+		result, err := s.assetsColl.UpdateOne(
+			ctx,
+			bson.M{"_id": assetObjID},
+			bson.M{
+				"$addToSet": bson.M{"vulnerabilities": vulnObjID},
+				"$set":      bson.M{"updated_at": time.Now()},
+			},
+		)
+
+		if err != nil {
+			fmt.Printf("添加漏洞ID到数组失败: %v\n", err)
+			return fmt.Errorf("添加漏洞ID到数组失败: %v", err)
+		}
+
+		fmt.Printf("添加漏洞ID到数组成功，匹配文档数: %d, 修改文档数: %d\n", result.MatchedCount, result.ModifiedCount)
+	}
+
+	return nil
 }
 
 // RemoveVulnerabilityFromAsset 從資產中移除漏洞關聯
@@ -403,7 +499,7 @@ func (s *AssetService) GetAssetVulnerabilities(ctx context.Context, assetID stri
 	}
 
 	// 查詢所有關聯的漏洞
-	cursor, err := s.vulnsColl.Find(
+	cursor, err := s.db.Collection("vulnerabilities").Find(
 		ctx,
 		bson.M{"_id": bson.M{"$in": asset.Vulnerabilities}},
 	)
@@ -445,4 +541,26 @@ func (s *AssetService) AddAssetNote(ctx context.Context, assetID string, content
 	)
 
 	return err
+}
+
+// GetAssetByName 根据资产名称获取资产
+func (s *AssetService) GetAssetByName(ctx context.Context, name string) (*models.Asset, error) {
+	var asset models.Asset
+	err := s.assetsColl.FindOne(ctx, bson.M{"name": name}).Decode(&asset)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil // 资产不存在返回nil
+		}
+		return nil, err
+	}
+	return &asset, nil
+}
+
+// CountAssetsByName 根据资产名称计数
+func (s *AssetService) CountAssetsByName(ctx context.Context, name string) (int64, error) {
+	count, err := s.assetsColl.CountDocuments(ctx, bson.M{"name": name})
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

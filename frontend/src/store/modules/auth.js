@@ -60,16 +60,14 @@ const actions = {
     try {
       commit('AUTH_REQUEST')
       
+      const loginPath = '/api/auth/login'
       // 在登录时记录详细信息，有助于调试
       console.log('尝试登录:', {
         baseURL: axios.defaults.baseURL,
-        fullURL: axios.defaults.baseURL + '/api/auth/login',
-        email: credentials.email
+        email: credentials.email,
+        loginPath: loginPath,
+        fullURL: `${axios.defaults.baseURL}${loginPath}`
       });
-      
-      // 由于baseURL已经为空，我们需要确保路径的正确性
-      // 如果当前请求显示/api/api/重复，则需要去掉一层/api/
-      const loginPath = '/api/auth/login'
       
       const response = await axios.post(loginPath, credentials)
       const { token, user } = response.data
@@ -78,11 +76,28 @@ const actions = {
       localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify(user))
       
+      console.log('登录成功，获取并保存令牌:', {
+        tokenReceived: !!token,
+        tokenPrefix: token ? token.substring(0, 10) + '...' : '',
+        userReceived: !!user,
+        localStorageSaved: {
+          token: !!localStorage.getItem('token'),
+          user: !!localStorage.getItem('user')
+        }
+      })
+      
       // 更新状态
       commit('AUTH_SUCCESS', { token, user })
       
       // 设置axios默认Authorization头
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      
+      // 获取完整的用户信息
+      try {
+        await dispatch('user/fetchCurrentUser', null, { root: true })
+      } catch (error) {
+        console.warn('无法获取完整的用户信息，将使用登录返回的基本信息')
+      }
       
       // 添加欢迎通知
       dispatch('addNotification', {
@@ -95,8 +110,72 @@ const actions = {
     } catch (error) {
       const message = error.response?.data?.error || '登录失败，请检查您的凭据'
       commit('AUTH_ERROR', message)
+      
+      // 添加失败通知
+      dispatch('addNotification', {
+        type: 'error',
+        message: message,
+        title: '登录失败'
+      }, { root: true }).catch(err => {
+        console.error('无法添加通知:', err);
+      });
+      
       return { success: false, message }
     }
+  },
+  
+  // 刷新token状态 - 用于解决授权问题
+  refreshTokenState({ commit }) {
+    try {
+      // 尝试从localStorage重新获取token
+      const token = localStorage.getItem('token')
+      let user = null
+      
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          user = JSON.parse(userStr)
+        }
+      } catch (e) {
+        console.error('解析用户数据失败:', e)
+      }
+      
+      if (token) {
+        // 重新设置到store中
+        commit('AUTH_SUCCESS', { token, user })
+        
+        // 重新设置axios默认头
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        
+        console.log('令牌状态已刷新:', {
+          tokenRefreshed: true,
+          userRefreshed: !!user
+        })
+        
+        return true
+      }
+      
+      return false
+    } catch (error) {
+      console.error('刷新令牌状态失败:', error)
+      return false
+    }
+  },
+  
+  // 添加明确的authError处理
+  authError({ commit, dispatch }, message) {
+    commit('AUTH_ERROR', message);
+    
+    // 添加错误通知
+    dispatch('addNotification', {
+      type: 'error',
+      message: message || '认证错误',
+      title: '认证失败'
+    }, { root: true }).catch(err => {
+      console.error('无法添加通知:', err);
+    });
+    
+    return { success: false, message };
   },
   
   // 恢复会话
@@ -113,7 +192,7 @@ const actions = {
       
       if (window.location.pathname === '/') {
         try {
-          response = await axios.get('/users/me', {
+          response = await axios.get('/api/users/me', {
             _silentError: true // 自定义标记，用于标识静默处理错误
           });
         } catch (e) {
@@ -126,7 +205,7 @@ const actions = {
           return { success: false };
         }
       } else {
-        response = await axios.get('/users/me');
+        response = await axios.get('/api/users/me');
       }
       
       console.log('获取用户信息成功，用户数据:', response.data);
