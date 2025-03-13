@@ -45,12 +45,6 @@ func InitDB() error {
 		authDB = "admin" // 默认认证数据库为 admin
 	}
 
-	// 输出调试信息
-	log.Printf("Using MongoDB URI: %s", mongoURI)
-	log.Printf("Using MongoDB Username: %s", mongoUsername)
-	log.Printf("Using MongoDB Password: %s", mongoPassword)
-	log.Printf("Using MongoDB Auth DB: %s", authDB)
-
 	// 设置MongoDB客户端选项
 	clientOptions := options.Client().
 		ApplyURI(mongoURI).

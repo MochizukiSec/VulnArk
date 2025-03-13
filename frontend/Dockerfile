@@ -1,6 +1,4 @@
-FROM nginx:1.15.3-alpine as production-stage
-
-MAINTAINER Vuln-Management
+FROM nginx:alpine
 
 COPY ./nginx.conf /etc/nginx/nginx.conf
 

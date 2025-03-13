@@ -1,33 +1,36 @@
-version: '3'
 services:
+  server:
+    build: ./backend
+    container_name: vulnark-server
+    environment:
+      - TZ=Asia/Shanghai
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB_NAME=vulnark_db
+    #   - JWT_SECRET=1234-abcd-4567
+    #   - ALLOWED_ORIGINS=http://localhost:8080 # 允许跨域的源地址
+    #   - DEFAULT_ADMIN_EMAIL=admin@qq.com      # 管理员账号
+    #   - DEFAULT_ADMIN_PASSWORD=Admin@123      # 管理员密码
+    links:
+      - mongodb
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+
+  frontend:
+    build: ./frontend
+    container_name: vulnark-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
   mongodb:
-    container_name: 'mongodb'
-    image: mongo:latest  
+    container_name: mongodb
+    image: mongo:latest
+    restart: always
     environment:
       - TZ=Asia/Shanghai
       - MONGO_INITDB_DATABASE=vulnark_db
     ports:
       - "27017:27017"
-    restart: always
-
-  server:
-    container_name: 'server'
-    build: .
-    ports:
-      - "8080:8080"
-    links:
-      - mongodb
-    depends_on:
-      - mongodb
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-
-  frontend:
-    container_name: 'frontend'
-    restart: always
-    build: ./frontend
-    ports:
-      - 80:80
-    depends_on:
-      - server
