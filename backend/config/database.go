@@ -37,10 +37,33 @@ func InitDB() error {
 		mongoURI = "mongodb://localhost:27017"
 	}
 
+	// 支持带认证的 MongoDB 数据库
+	mongoUsername := os.Getenv("MONGO_USERNAME")
+	mongoPassword := os.Getenv("MONGO_PASSWORD")
+	authDB := os.Getenv("MONGO_AUTH_DB")
+	if authDB == "" {
+		authDB = "admin" // 默认认证数据库为 admin
+	}
+
+	// 输出调试信息
+	log.Printf("Using MongoDB URI: %s", mongoURI)
+	log.Printf("Using MongoDB Username: %s", mongoUsername)
+	log.Printf("Using MongoDB Password: %s", mongoPassword)
+	log.Printf("Using MongoDB Auth DB: %s", authDB)
+
 	// 设置MongoDB客户端选项
 	clientOptions := options.Client().
 		ApplyURI(mongoURI).
 		SetConnectTimeout(10 * time.Second)
+
+	if mongoUsername != "" && mongoPassword != "" {
+		credential := options.Credential{
+			Username:   mongoUsername,
+			Password:   mongoPassword,
+			AuthSource: authDB,
+		}
+		clientOptions.SetAuth(credential)
+	}
 
 	// 连接到MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
