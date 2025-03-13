@@ -46,6 +46,8 @@ func main() {
 
 	// 创建Gin引擎
 	log.Println("正在创建Gin引擎...")
+	// 关闭 [GIN-debug] 级别的日志输出
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	log.Println("Gin引擎创建完成")
 
