@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="200" height="200">
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+  </defs>
+  <rect x="70" y="100" width="372" height="312" rx="20" ry="20" fill="url(#gradient1)" />
+  <circle cx="256" cy="180" r="40" fill="#fff" opacity="0.9" />
+  <rect x="160" y="240" width="192" height="15" rx="7.5" ry="7.5" fill="#fff" opacity="0.7" />
+  <rect x="180" y="270" width="152" height="15" rx="7.5" ry="7.5" fill="#fff" opacity="0.6" />
+  <rect x="200" y="300" width="112" height="15" rx="7.5" ry="7.5" fill="#fff" opacity="0.5" />
+  <path d="M120 350 L170 320 L220 340 L270 310 L320 350 L370 290" stroke="url(#gradient2)" stroke-width="8" fill="none" stroke-linecap="round" />
+  <circle cx="170" cy="320" r="8" fill="#fff" />
+  <circle cx="220" cy="340" r="8" fill="#fff" />
+  <circle cx="270" cy="310" r="8" fill="#fff" />
+  <circle cx="320" cy="350" r="8" fill="#fff" />
+  <circle cx="370" cy="290" r="8" fill="#fff" />
+</svg> 
