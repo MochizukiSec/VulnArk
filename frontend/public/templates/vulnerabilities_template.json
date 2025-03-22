@@ -1,0 +1,28 @@
+[
+  {
+    "title": "SQL注入漏洞示例",
+    "cve_id": "CVE-2023-1234",
+    "description": "这是一个SQL注入漏洞的描述示例",
+    "type": "sql_injection",
+    "severity": "critical",
+    "status": "new",
+    "cvss": 9.1,
+    "assets": [1, 2],
+    "solution": "修复建议：对所有用户输入进行参数化处理",
+    "references": "https://example.com/reference",
+    "reproduce_steps": "复现步骤：\n1. 访问登录页面\n2. 在用户名输入框中输入 admin' OR '1'='1\n3. 点击登录按钮"
+  },
+  {
+    "title": "跨站脚本(XSS)示例",
+    "cve_id": "CVE-2023-5678",
+    "description": "这是一个跨站脚本漏洞的描述示例",
+    "type": "xss",
+    "severity": "high",
+    "status": "new",
+    "cvss": 7.5,
+    "assets": [3],
+    "solution": "对所有用户输入进行HTML实体编码",
+    "references": "https://owasp.org/www-community/attacks/xss/",
+    "reproduce_steps": "1. 访问评论页面\n2. 在评论框中输入<script>alert('XSS')</script>\n3. 提交评论"
+  }
+] 

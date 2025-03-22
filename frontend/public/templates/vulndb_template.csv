@@ -1,0 +1,3 @@
+cve,title,description,severity,cvss,cvss_vector,cwe,exploit_available,exploit_info,references,affected_products,remediation,published_date,last_modified_date,tags
+CVE-2023-12345,示例漏洞标题,这是一个示例漏洞描述，详细说明漏洞的特点、影响和可能的攻击方式,high,8.5,CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N,79,true,公开可获取的漏洞利用代码,"https://example.com/cve-details,https://example.com/security-advisory","ExampleProduct 1.0,ExampleProduct 2.0",升级到最新版本或应用官方提供的补丁,2023-08-15,2023-09-01,"web,injection,xss"
+CVE-2023-67890,另一个示例漏洞,这是另一个示例漏洞描述,medium,5.5,CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N,119,false,,"https://example.com/advisory-details",TestProduct 3.1,应用供应商提供的安全更新,2023-10-20,2023-10-25,"buffer,memory,desktop" 

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vulnark-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"  # 映射到主机的80端口
+    depends_on:
+      - backend
+    networks:
+      - vulnark-network
+
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vulnark-backend
+    restart: unless-stopped
+    volumes:
+      - ./backend/config:/app/config
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=vulnark
+      - DB_PASSWORD=vulnark_password
+      - DB_NAME=vulnark
+    depends_on:
+      - mysql
+    networks:
+      - vulnark-network
+
+  # MySQL数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: vulnark-mysql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=vulnark
+      - MYSQL_USER=vulnark
+      - MYSQL_PASSWORD=vulnark_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - vulnark-network
+    ports:
+      - "3306:3306"  # 可选，用于开发时直接连接数据库
+
+networks:
+  vulnark-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local 

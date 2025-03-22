@@ -1,0 +1,46 @@
+[
+  {
+    "cve": "CVE-2023-12345",
+    "title": "示例漏洞标题",
+    "description": "这是一个示例漏洞描述，详细说明漏洞的特点、影响和可能的攻击方式",
+    "severity": "high",
+    "cvss": "8.5",
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+    "cwe": "79",
+    "exploit_available": true,
+    "exploit_info": "公开可获取的漏洞利用代码",
+    "references": [
+      "https://example.com/cve-details",
+      "https://example.com/security-advisory"
+    ],
+    "affected_products": [
+      "ExampleProduct 1.0",
+      "ExampleProduct 2.0"
+    ],
+    "remediation": "升级到最新版本或应用官方提供的补丁",
+    "published_date": "2023-08-15",
+    "last_modified_date": "2023-09-01",
+    "tags": ["web", "injection", "xss"]
+  },
+  {
+    "cve": "CVE-2023-67890",
+    "title": "另一个示例漏洞",
+    "description": "这是另一个示例漏洞描述",
+    "severity": "medium",
+    "cvss": "5.5",
+    "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+    "cwe": "119",
+    "exploit_available": false,
+    "exploit_info": "",
+    "references": [
+      "https://example.com/advisory-details"
+    ],
+    "affected_products": [
+      "TestProduct 3.1"
+    ],
+    "remediation": "应用供应商提供的安全更新",
+    "published_date": "2023-10-20",
+    "last_modified_date": "2023-10-25",
+    "tags": ["buffer", "memory", "desktop"]
+  }
+] 

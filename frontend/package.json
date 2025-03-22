@@ -1,0 +1,39 @@
+{
+  "name": "vulnark-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^0.2.4",
+    "axios": "^0.24.0",
+    "core-js": "^3.19.1",
+    "dompurify": "^3.2.4",
+    "echarts": "^5.6.0",
+    "element-plus": "^1.2.0-beta.3",
+    "js-cookie": "^3.0.1",
+    "marked": "^4.2.12",
+    "nprogress": "^0.2.0",
+    "uuid": "^9.0.1",
+    "vue": "^3.2.22",
+    "vue-router": "^4.0.12",
+    "vuex": "^4.0.2"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-optional-chaining": "^7.21.0",
+    "@vue/cli-plugin-babel": "~4.5.15",
+    "@vue/cli-plugin-eslint": "~4.5.15",
+    "@vue/cli-plugin-router": "~4.5.15",
+    "@vue/cli-plugin-vuex": "~4.5.15",
+    "@vue/cli-service": "~4.5.15",
+    "@vue/compiler-sfc": "^3.2.22",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^6.8.0",
+    "eslint-plugin-vue": "^7.20.0",
+    "sass": "^1.43.4",
+    "sass-loader": "^10.2.0"
+  }
+}

@@ -1,0 +1,55 @@
+# 服务器配置
+server:
+  port: 8080
+  mode: development # development, production
+  timeout: 60 # 秒
+
+# 数据库配置
+database:
+  type: mysql # mysql, mongodb
+  mysql:
+    host: localhost
+    port: 3306
+    username: root
+    password: root123456
+    database: vulnark
+    charset: utf8mb4
+    max_idle_conns: 10
+    max_open_conns: 100
+  # mongodb:
+  #   uri: mongodb://localhost:27017
+  #   database: vulnark
+  #   timeout: 10 # 秒
+
+# 认证配置
+auth:
+  jwt_secret: your-secret-key-here
+  token_expire: 24 # 小时
+  refresh_token_expire: 168 # 小时
+
+# 日志配置
+log:
+  level: debug # debug, info, warn, error
+  file_path: ./logs
+  max_size: 100 # MB
+  max_backups: 10
+  max_age: 30 # 天
+  compress: true
+
+# 安全配置
+security:
+  cors:
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["Origin", "Content-Type", "Accept", "Authorization"]
+    allow_credentials: true
+  rate_limit:
+    enabled: true
+    requests: 100 # 请求次数
+    duration: 1 # 分钟
+
+# 文件上传配置
+upload:
+  location: ./uploads
+  max_size: 10 # MB
+  allowed_types: ["csv", "xlsx", "json"] 

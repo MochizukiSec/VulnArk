@@ -1,0 +1,163 @@
+/* 全局样式文件 */
+
+/* 变量 */
+:root {
+  --primary-color: #409EFF;
+  --success-color: #67C23A;
+  --warning-color: #E6A23C;
+  --danger-color: #F56C6C;
+  --info-color: #909399;
+  --text-color: #333;
+  --background-color: #f5f7fa;
+  --border-color: #DCDFE6;
+  --header-height: 60px;
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 64px;
+}
+
+/* 重置样式 */
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  background-color: var(--background-color);
+}
+
+html {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+#app {
+  height: 100%;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* 文本溢出处理 */
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 常用间距 */
+.m-0 { margin: 0 !important; }
+.m-1 { margin: 0.25rem !important; }
+.m-2 { margin: 0.5rem !important; }
+.m-3 { margin: 1rem !important; }
+.m-4 { margin: 1.5rem !important; }
+.m-5 { margin: 3rem !important; }
+
+.mt-0 { margin-top: 0 !important; }
+.mt-1 { margin-top: 0.25rem !important; }
+.mt-2 { margin-top: 0.5rem !important; }
+.mt-3 { margin-top: 1rem !important; }
+.mt-4 { margin-top: 1.5rem !important; }
+.mt-5 { margin-top: 3rem !important; }
+
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 0.25rem !important; }
+.mb-2 { margin-bottom: 0.5rem !important; }
+.mb-3 { margin-bottom: 1rem !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+.mb-5 { margin-bottom: 3rem !important; }
+
+.p-0 { padding: 0 !important; }
+.p-1 { padding: 0.25rem !important; }
+.p-2 { padding: 0.5rem !important; }
+.p-3 { padding: 1rem !important; }
+.p-4 { padding: 1.5rem !important; }
+.p-5 { padding: 3rem !important; }
+
+/* 严重程度颜色 */
+.severity-critical { color: #F56C6C !important; }
+.severity-high { color: #E6A23C !important; }
+.severity-medium { color: #409EFF !important; }
+.severity-low { color: #67C23A !important; }
+.severity-info { color: #909399 !important; }
+
+/* 状态标签样式 */
+.status-new { background-color: #E6A23C !important; }
+.status-verified { background-color: #409EFF !important; }
+.status-in-progress { background-color: #909399 !important; }
+.status-fixed { background-color: #67C23A !important; }
+.status-closed { background-color: #67C23A !important; }
+.status-false-positive { background-color: #F56C6C !important; }
+
+/* 自定义卡片样式 */
+.custom-card {
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: #fff;
+  overflow: hidden;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  margin-bottom: 20px;
+}
+
+.custom-card:hover {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+}
+
+.custom-card-header {
+  padding: 15px;
+  border-bottom: 1px solid var(--border-color);
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.custom-card-body {
+  padding: 15px;
+}
+
+.page-container {
+  padding: 20px;
+}
+
+/* 登录和注册页面 */
+.login-container, .register-container {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2d3a4b;
+}
+
+.login-form, .register-form {
+  width: 360px;
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 5px;
+}
+
+.login-title, .register-title {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 26px;
+  color: var(--primary-color);
+} 

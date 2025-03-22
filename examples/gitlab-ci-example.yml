@@ -1,0 +1,227 @@
+# VulnArk CI/CD集成示例 - GitLab CI
+
+variables:
+  # VulnArk配置
+  VULNARK_API_ENDPOINT: https://vulnark.example.com
+  # 请在GitLab设置中添加VULNARK_API_KEY作为安全变量
+  VULNARK_INTEGRATION_TYPE: gitlab
+
+stages:
+  - test
+  - security
+  - build
+  - deploy
+
+# 安装依赖
+install:
+  stage: test
+  image: node:lts
+  script:
+    - npm ci
+  cache:
+    paths:
+      - node_modules/
+  artifacts:
+    paths:
+      - node_modules/
+
+# 静态代码分析
+lint:
+  stage: test
+  image: node:lts
+  needs:
+    - install
+  script:
+    - npm run lint -- --format=json --output-file=eslint-report.json
+  artifacts:
+    paths:
+      - eslint-report.json
+
+# 单元测试
+unit-test:
+  stage: test
+  image: node:lts
+  needs:
+    - install
+  script:
+    - npm test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+
+# 依赖安全检查
+dependency-check:
+  stage: security
+  image: node:lts
+  needs:
+    - install
+  script:
+    - npm audit --json > npm-audit.json
+  artifacts:
+    paths:
+      - npm-audit.json
+  allow_failure: true
+
+# 静态应用程序安全测试 (SAST)
+sast:
+  stage: security
+  image: owasp/sonarqube-scanner
+  script:
+    - sonar-scanner -Dsonar.projectKey=$CI_PROJECT_NAME -Dsonar.sources=. -Dsonar.host.url=http://sonarqube:9000 -Dsonar.login=$SONAR_TOKEN
+    - cp /opt/sonarqube/report.json ./sonarqube-report.json
+  artifacts:
+    paths:
+      - sonarqube-report.json
+  allow_failure: true
+
+# 动态应用程序安全测试 (DAST)
+dast:
+  stage: security
+  image: owasp/zap2docker-stable
+  script:
+    - mkdir -p /zap/wrk/
+    - cp -r . /zap/wrk/
+    - cd /zap/wrk/
+    - zap-baseline.py -t http://$APP_HOST:$APP_PORT -J zap-report.json || true
+    - cp /zap/wrk/zap-report.json ./
+  artifacts:
+    paths:
+      - zap-report.json
+  allow_failure: true
+
+# 合并安全报告并发送到VulnArk
+vulnark-report:
+  stage: security
+  image: node:lts
+  needs:
+    - dependency-check
+    - sast
+    - dast
+    - lint
+  script:
+    - |
+      # 创建合并报告脚本
+      cat > merge-reports.js << 'EOL'
+      const fs = require('fs');
+      
+      const findings = [];
+      
+      // 处理npm audit结果
+      try {
+        const npmAudit = require('./npm-audit.json');
+        if (npmAudit.advisories) {
+          Object.values(npmAudit.advisories).forEach(adv => {
+            findings.push({
+              title: adv.title,
+              severity: adv.severity,
+              description: adv.overview,
+              cve_id: adv.cves && adv.cves.length > 0 ? adv.cves[0] : "",
+              references: adv.url
+            });
+          });
+        }
+      } catch (e) {
+        console.warn('处理npm audit报告失败:', e.message);
+      }
+      
+      // 处理ZAP报告
+      try {
+        const zapReport = require('./zap-report.json');
+        if (zapReport.site) {
+          zapReport.site.forEach(site => {
+            site.alerts.forEach(alert => {
+              findings.push({
+                title: alert.name,
+                severity: alert.riskcode <= 1 ? "low" : 
+                        alert.riskcode == 2 ? "medium" : 
+                        alert.riskcode == 3 ? "high" : "critical",
+                description: alert.desc,
+                references: alert.reference
+              });
+            });
+          });
+        }
+      } catch (e) {
+        console.warn('处理ZAP报告失败:', e.message);
+      }
+      
+      // 处理SonarQube报告
+      try {
+        const sonarReport = require('./sonarqube-report.json');
+        if (sonarReport.issues) {
+          sonarReport.issues.forEach(issue => {
+            findings.push({
+              title: `SonarQube: ${issue.rule}`,
+              severity: issue.severity.toLowerCase(),
+              description: `${issue.message} in ${issue.component} at line ${issue.line || 'N/A'}`,
+              references: `https://sonarqube.example.com/coding_rules?open=${issue.rule}`
+            });
+          });
+        }
+      } catch (e) {
+        console.warn('处理SonarQube报告失败:', e.message);
+      }
+      
+      // 处理ESLint报告
+      try {
+        const eslintReport = require('./eslint-report.json');
+        if (eslintReport.results) {
+          eslintReport.results.forEach(result => {
+            result.messages.forEach(msg => {
+              if (msg.severity >= 2) { // 只包含错误，不包含警告
+                findings.push({
+                  title: `ESLint: ${msg.ruleId}`,
+                  severity: "info",
+                  description: `${msg.message} at ${result.filePath}:${msg.line}:${msg.column}`,
+                  references: `https://eslint.org/docs/rules/${msg.ruleId}`
+                });
+              }
+            });
+          });
+        }
+      } catch (e) {
+        console.warn('处理ESLint报告失败:', e.message);
+      }
+      
+      const vulnarkReport = { findings };
+      fs.writeFileSync("vulnark-report.json", JSON.stringify(vulnarkReport, null, 2));
+      console.log(`生成的报告包含 ${findings.length} 个发现项`);
+      EOL
+      
+      # 运行脚本合并报告
+      node merge-reports.js
+      
+      # 发送结果到VulnArk
+      curl -X POST \
+        ${VULNARK_API_ENDPOINT}/api/v1/webhooks/${VULNARK_INTEGRATION_TYPE} \
+        -H "Content-Type: application/json" \
+        -H "X-API-Key: ${VULNARK_API_KEY}" \
+        -d @vulnark-report.json
+      
+  artifacts:
+    paths:
+      - vulnark-report.json
+
+# 构建应用
+build:
+  stage: build
+  image: node:lts
+  needs:
+    - unit-test
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+
+# 部署生产环境
+deploy-production:
+  stage: deploy
+  image: alpine
+  needs:
+    - build
+    - vulnark-report
+  script:
+    - echo "部署到生产环境"
+  environment:
+    name: production
+  only:
+    - main 

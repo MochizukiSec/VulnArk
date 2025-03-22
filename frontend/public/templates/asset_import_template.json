@@ -1,0 +1,46 @@
+[
+  {
+    "name": "服务器01",
+    "ip": "192.168.1.10",
+    "mac": "00:11:22:33:44:55",
+    "type": "server",
+    "department": "信息技术部",
+    "owner": "张三",
+    "status": "active",
+    "risk_level": "high",
+    "description": "核心业务服务器"
+  },
+  {
+    "name": "网站应用01",
+    "ip": "192.168.1.20",
+    "mac": "00:11:22:33:44:56",
+    "type": "website",
+    "department": "研发部",
+    "owner": "李四",
+    "status": "active",
+    "risk_level": "medium",
+    "description": "公司官网应用服务器"
+  },
+  {
+    "name": "数据库01",
+    "ip": "192.168.1.30",
+    "mac": "00:11:22:33:44:57",
+    "type": "database",
+    "department": "数据中心",
+    "owner": "王五",
+    "status": "active",
+    "risk_level": "high",
+    "description": "主数据库服务器"
+  },
+  {
+    "name": "网络设备01",
+    "ip": "192.168.1.1",
+    "mac": "00:11:22:33:44:58",
+    "type": "network",
+    "department": "网络运维部",
+    "owner": "赵六",
+    "status": "active",
+    "risk_level": "critical",
+    "description": "核心路由器"
+  }
+] 

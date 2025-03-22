@@ -1,0 +1,64 @@
+# 服务器配置
+server:
+  port: 8080
+  mode: release  # debug 或 release
+
+# 数据库配置
+database:
+  type: mysql
+  host: mysql  # 容器服务名
+  port: 3306
+  username: ${DB_USER}  # 从环境变量读取
+  password: ${DB_PASSWORD}  # 从环境变量读取
+  database: ${DB_NAME}  # 从环境变量读取
+  charset: utf8mb4
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+# 日志配置
+log:
+  level: info  # debug, info, warn, error
+  format: json  # text 或 json
+  file_path: /app/logs
+  max_size: 100  # MB
+  max_age: 30    # 天
+  max_backups: 10
+
+# JWT配置
+jwt:
+  secret: vulnark_jwt_secret_key_please_change_in_production
+  expiration: 86400  # 过期时间（秒）
+  issuer: vulnark
+
+# 上传配置
+upload:
+  location: /app/uploads
+  max_size: 10  # MB
+  allowed_types: jpg,jpeg,png,gif,doc,docx,pdf,xls,xlsx,zip,rar,7z,csv,json,xml
+
+# 通知配置
+notification:
+  enabled: false
+  email:
+    enabled: false
+    smtp_server: smtp.example.com
+    smtp_port: 587
+    username: user@example.com
+    password: password
+    from_email: vulnark@example.com
+
+# AI功能配置
+ai:
+  enabled: false
+  provider: openai
+  api_key: 
+  api_url: https://api.openai.com/v1
+  default_model: gpt-3.5-turbo
+
+# 安全配置
+security:
+  password_min_length: 8
+  password_require_number: true
+  password_require_letter: true
+  password_require_special: false 

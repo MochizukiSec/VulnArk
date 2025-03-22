@@ -1,0 +1,233 @@
+name: VulnArk CI/CD集成示例
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: 测试和分析
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 运行单元测试
+        run: npm test
+        
+      - name: 运行ESLint
+        run: npm run lint -- --format=json --output-file=eslint-report.json
+        continue-on-error: true
+        
+  security:
+    name: 安全扫描
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 依赖检查
+        run: npm audit --json > npm-audit.json
+        continue-on-error: true
+        
+      - name: 运行OWASP依赖检查
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'VulnArk'
+          path: '.'
+          format: 'JSON'
+          out: 'reports'
+          args: >
+            --enableExperimental
+            --scan 'package.json'
+            --scan 'package-lock.json'
+        continue-on-error: true
+        
+      - name: 代码扫描 - CodeQL
+        uses: github/codeql-action/analyze@v2
+        with:
+          languages: javascript, typescript
+          output: codeql-results
+          
+      - name: 合并安全报告
+        run: |
+          # 创建合并报告脚本
+          cat > merge-reports.js << 'EOL'
+          const fs = require('fs');
+          
+          const findings = [];
+          
+          // 处理npm audit结果
+          try {
+            const npmAudit = require('./npm-audit.json');
+            if (npmAudit.advisories) {
+              Object.values(npmAudit.advisories).forEach(adv => {
+                findings.push({
+                  title: adv.title,
+                  severity: adv.severity,
+                  description: adv.overview,
+                  cve_id: adv.cves && adv.cves.length > 0 ? adv.cves[0] : "",
+                  references: adv.url
+                });
+              });
+            }
+          } catch (e) {
+            console.warn('处理npm audit报告失败:', e.message);
+          }
+          
+          // 处理OWASP依赖检查结果
+          try {
+            const owaspReport = require('./reports/dependency-check-report.json');
+            if (owaspReport.dependencies) {
+              owaspReport.dependencies.forEach(dep => {
+                if (dep.vulnerabilities) {
+                  dep.vulnerabilities.forEach(vuln => {
+                    findings.push({
+                      title: `${dep.fileName}: ${vuln.name}`,
+                      severity: vuln.severity,
+                      description: vuln.description,
+                      cve_id: vuln.name,
+                      references: vuln.references ? vuln.references[0].url : ""
+                    });
+                  });
+                }
+              });
+            }
+          } catch (e) {
+            console.warn('处理OWASP依赖检查报告失败:', e.message);
+          }
+          
+          // 处理CodeQL结果
+          try {
+            if (fs.existsSync('./codeql-results/results.json')) {
+              const codeql = require('./codeql-results/results.json');
+              if (codeql.runs && codeql.runs[0] && codeql.runs[0].results) {
+                codeql.runs[0].results.forEach(result => {
+                  findings.push({
+                    title: `CodeQL: ${result.ruleId}`,
+                    severity: result.level === 'error' ? 'high' : 
+                            result.level === 'warning' ? 'medium' : 'low',
+                    description: result.message.text,
+                    references: `https://codeql.github.com/codeql-query-help/${result.ruleId}`
+                  });
+                });
+              }
+            }
+          } catch (e) {
+            console.warn('处理CodeQL报告失败:', e.message);
+          }
+          
+          // 处理ESLint报告
+          try {
+            const eslintReport = require('./eslint-report.json');
+            if (eslintReport.results) {
+              eslintReport.results.forEach(result => {
+                result.messages.forEach(msg => {
+                  if (msg.severity >= 2) { // 只包含错误，不包含警告
+                    findings.push({
+                      title: `ESLint: ${msg.ruleId}`,
+                      severity: "info",
+                      description: `${msg.message} at ${result.filePath}:${msg.line}:${msg.column}`,
+                      references: `https://eslint.org/docs/rules/${msg.ruleId}`
+                    });
+                  }
+                });
+              });
+            }
+          } catch (e) {
+            console.warn('处理ESLint报告失败:', e.message);
+          }
+          
+          const vulnarkReport = { findings };
+          fs.writeFileSync("vulnark-report.json", JSON.stringify(vulnarkReport, null, 2));
+          console.log(`生成的报告包含 ${findings.length} 个发现项`);
+          EOL
+          
+          # 运行脚本合并报告
+          node merge-reports.js
+          
+      - name: 发送结果到VulnArk
+        run: |
+          curl -X POST \
+            ${{ secrets.VULNARK_API_ENDPOINT }}/api/v1/webhooks/github \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: ${{ secrets.VULNARK_API_KEY }}" \
+            -d @vulnark-report.json
+            
+      - name: 上传漏洞报告
+        uses: actions/upload-artifact@v3
+        with:
+          name: vulnerability-reports
+          path: |
+            vulnark-report.json
+            npm-audit.json
+            eslint-report.json
+            reports/
+            codeql-results/
+            
+  build:
+    name: 构建
+    runs-on: ubuntu-latest
+    needs: security
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 构建应用
+        run: npm run build
+        
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-files
+          path: dist/
+          
+  deploy:
+    name: 部署
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://vulnark.example.com
+    steps:
+      - name: 下载构建产物
+        uses: actions/download-artifact@v3
+        with:
+          name: build-files
+          path: dist
+          
+      - name: 部署到生产环境
+        run: echo "部署到生产环境"
+        # 这里替换为实际的部署命令 

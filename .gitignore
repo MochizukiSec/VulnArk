@@ -1,0 +1,49 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 编辑器与IDE文件
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 依赖目录
+node_modules/
+vendor/
+
+# 编译输出
+dist/
+build/
+
+# 日志文件
+*.log
+logs/
+npm-debug.log*
+
+# 运行时数据
+*.pid
+*.seed
+*.pid.lock
+
+# 环境变量和密钥
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 测试覆盖率
+coverage/
+
+# 临时文件和目录
+tmp/
+temp/
+.specstory/history/
+
+# 数据库文件
+*.sqlite
+*.db
+
+# 上传目录
+uploads/

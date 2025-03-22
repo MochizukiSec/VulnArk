@@ -1,0 +1,14 @@
+.git
+.gitignore
+README.md
+Dockerfile
+*.log
+logs/
+uploads/
+.vscode/
+.idea/
+node_modules/
+tmp/
+*.exe
+*.test
+*.prof 

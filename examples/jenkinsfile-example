@@ -1,0 +1,152 @@
+// VulnArk CI/CD集成示例 - Jenkins Pipeline
+
+pipeline {
+    agent any
+
+    environment {
+        // VulnArk配置
+        VULNARK_API_ENDPOINT = 'https://vulnark.example.com'
+        VULNARK_API_KEY = credentials('vulnark-api-key')
+        VULNARK_INTEGRATION_TYPE = 'jenkins'
+    }
+
+    stages {
+        stage('检出代码') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('依赖检查') {
+            steps {
+                sh 'npm ci' // 或其他安装依赖命令
+            }
+        }
+
+        stage('静态代码分析') {
+            steps {
+                // 使用ESLint进行静态分析
+                sh 'npm run lint -- --format=json --output-file=eslint-report.json'
+                
+                // 使用其他静态分析工具
+                sh 'npm run security-scan -- --json --output=security-report.json'
+            }
+        }
+        
+        stage('单元测试') {
+            steps {
+                sh 'npm test'
+            }
+        }
+
+        stage('构建应用') {
+            steps {
+                sh 'npm run build'
+            }
+        }
+
+        stage('安全扫描') {
+            steps {
+                // 运行依赖检查
+                sh 'npm audit --json > npm-audit.json'
+                
+                // 运行OWASP ZAP扫描 (示例)
+                sh '''
+                    docker run --rm -v $(pwd):/zap/wrk owasp/zap2docker-stable zap-baseline.py \
+                        -t http://localhost:3000 -J zap-report.json
+                '''
+                
+                // 转换扫描结果为VulnArk格式
+                sh '''
+                    node -e '
+                        const npmAudit = require("./npm-audit.json");
+                        const zapReport = require("./zap-report.json");
+                        const eslintReport = require("./eslint-report.json");
+                        
+                        const findings = [];
+                        
+                        // 处理npm audit结果
+                        if (npmAudit.advisories) {
+                            Object.values(npmAudit.advisories).forEach(adv => {
+                                findings.push({
+                                    title: adv.title,
+                                    severity: adv.severity,
+                                    description: adv.overview,
+                                    cve_id: adv.cves[0] || "",
+                                    references: adv.url
+                                });
+                            });
+                        }
+                        
+                        // 处理ZAP报告
+                        if (zapReport.site) {
+                            zapReport.site.forEach(site => {
+                                site.alerts.forEach(alert => {
+                                    findings.push({
+                                        title: alert.name,
+                                        severity: alert.riskcode <= 1 ? "low" : 
+                                                alert.riskcode == 2 ? "medium" : 
+                                                alert.riskcode == 3 ? "high" : "critical",
+                                        description: alert.desc,
+                                        references: alert.reference
+                                    });
+                                });
+                            });
+                        }
+                        
+                        // 处理ESLint报告
+                        if (eslintReport.results) {
+                            eslintReport.results.forEach(result => {
+                                result.messages.forEach(msg => {
+                                    if (msg.severity >= 2) { // 只包含错误，不包含警告
+                                        findings.push({
+                                            title: `ESLint: ${msg.ruleId}`,
+                                            severity: "info",
+                                            description: `${msg.message} at ${result.filePath}:${msg.line}:${msg.column}`,
+                                            references: `https://eslint.org/docs/rules/${msg.ruleId}`
+                                        });
+                                    }
+                                });
+                            });
+                        }
+                        
+                        const vulnarkReport = { findings };
+                        require("fs").writeFileSync("vulnark-report.json", JSON.stringify(vulnarkReport));
+                    '
+                '''
+                
+                // 发送结果到VulnArk
+                sh '''
+                    curl -X POST \
+                        ${VULNARK_API_ENDPOINT}/api/v1/webhooks/${VULNARK_INTEGRATION_TYPE} \
+                        -H "Content-Type: application/json" \
+                        -H "X-API-Key: ${VULNARK_API_KEY}" \
+                        -d @vulnark-report.json
+                '''
+            }
+        }
+
+        stage('部署') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo '部署到生产环境'
+                // 部署步骤
+            }
+        }
+    }
+
+    post {
+        always {
+            // 清理工作区
+            cleanWs()
+        }
+        success {
+            echo '构建成功！'
+        }
+        failure {
+            echo '构建失败！'
+        }
+    }
+} 

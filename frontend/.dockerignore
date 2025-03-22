@@ -1,0 +1,17 @@
+.git
+.gitignore
+README.md
+Dockerfile
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+dist.zip 
