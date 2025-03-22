@@ -10,6 +10,8 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"  # 映射到主机的80端口
+    environment:
+      - API_URL=/api  # 使用相对路径，更通用
     depends_on:
       - backend
     networks:
@@ -32,6 +34,10 @@ services:
       - DB_USER=vulnark
       - DB_PASSWORD=vulnark_password
       - DB_NAME=vulnark
+      - SERVER_HOST=0.0.0.0  # 监听所有网络接口
+      - SERVER_PORT=8080     # 后端API端口
+    ports:
+      - "8080:8080"  # 将后端API映射到主机的8080端口
     depends_on:
       - mysql
     networks:
@@ -55,7 +61,7 @@ services:
     networks:
       - vulnark-network
     ports:
-      - "3306:3306"  # 可选，用于开发时直接连接数据库
+      - "3306:3306"  # 映射到主机的3306端口
 
 networks:
   vulnark-network:

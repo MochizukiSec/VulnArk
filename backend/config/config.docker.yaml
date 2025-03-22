@@ -2,6 +2,7 @@
 server:
   port: 8080
   mode: release  # debug 或 release
+  host: 0.0.0.0  # 监听所有网络接口
 
 # 数据库配置
 database:

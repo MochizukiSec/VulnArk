@@ -41,6 +41,41 @@ chmod +x ./frontend/Dockerfile
 chmod +x ./deploy.sh
 chmod +x -R ./mysql
 
+# 复制Docker配置文件
+echo -e "${YELLOW}配置后端...${NC}"
+cp -f ./backend/config/config.docker.yaml ./backend/config/config.yaml
+echo -e "${GREEN}已复制Docker配置文件${NC}"
+
+# 询问是否需要自定义端口配置
+echo -e "${YELLOW}是否需要自定义端口配置? (y/n)${NC}"
+read -r customize_ports
+
+if [[ "$customize_ports" == "y" ]]; then
+    echo -e "${YELLOW}请输入前端Web端口 (默认: 80):${NC}"
+    read -r web_port
+    web_port=${web_port:-80}
+    
+    echo -e "${YELLOW}请输入后端API端口 (默认: 8080):${NC}"
+    read -r api_port
+    api_port=${api_port:-8080}
+    
+    echo -e "${YELLOW}请输入数据库端口 (默认: 3306):${NC}"
+    read -r db_port
+    db_port=${db_port:-3306}
+    
+    # 修改docker-compose.yml中的端口配置
+    sed -i "s/- \"80:80\"/- \"$web_port:80\"/" docker-compose.yml
+    sed -i "s/- \"8080:8080\"/- \"$api_port:8080\"/" docker-compose.yml
+    sed -i "s/- \"3306:3306\"/- \"$db_port:3306\"/" docker-compose.yml
+    
+    echo -e "${GREEN}端口配置已更新${NC}"
+else
+    echo -e "${GREEN}将使用默认端口配置:${NC}"
+    echo "  前端Web端口: 80"
+    echo "  后端API端口: 8080"
+    echo "  数据库端口: 3306"
+fi
+
 # 询问是否使用默认配置或自定义配置
 echo -e "${YELLOW}是否要自定义数据库配置? (y/n)${NC}"
 read -r customize_db
@@ -59,15 +94,15 @@ if [[ "$customize_db" == "y" ]]; then
     read -r db_name
     
     # 修改docker-compose.yml中的数据库配置
-    sed -i '' "s/MYSQL_ROOT_PASSWORD=root_password/MYSQL_ROOT_PASSWORD=$db_root_password/" docker-compose.yml
-    sed -i '' "s/MYSQL_DATABASE=vulnark/MYSQL_DATABASE=$db_name/" docker-compose.yml
-    sed -i '' "s/MYSQL_USER=vulnark/MYSQL_USER=$db_user/" docker-compose.yml
-    sed -i '' "s/MYSQL_PASSWORD=vulnark_password/MYSQL_PASSWORD=$db_password/" docker-compose.yml
+    sed -i "s/MYSQL_ROOT_PASSWORD=root_password/MYSQL_ROOT_PASSWORD=$db_root_password/" docker-compose.yml
+    sed -i "s/MYSQL_DATABASE=vulnark/MYSQL_DATABASE=$db_name/" docker-compose.yml
+    sed -i "s/MYSQL_USER=vulnark/MYSQL_USER=$db_user/" docker-compose.yml
+    sed -i "s/MYSQL_PASSWORD=vulnark_password/MYSQL_PASSWORD=$db_password/" docker-compose.yml
     
     # 同时更新后端服务的环境变量
-    sed -i '' "s/DB_USER=vulnark/DB_USER=$db_user/" docker-compose.yml
-    sed -i '' "s/DB_PASSWORD=vulnark_password/DB_PASSWORD=$db_password/" docker-compose.yml
-    sed -i '' "s/DB_NAME=vulnark/DB_NAME=$db_name/" docker-compose.yml
+    sed -i "s/DB_USER=vulnark/DB_USER=$db_user/" docker-compose.yml
+    sed -i "s/DB_PASSWORD=vulnark_password/DB_PASSWORD=$db_password/" docker-compose.yml
+    sed -i "s/DB_NAME=vulnark/DB_NAME=$db_name/" docker-compose.yml
     
     echo -e "${GREEN}数据库配置已更新${NC}"
 else
@@ -88,8 +123,21 @@ docker-compose up -d --build
 # 检查是否部署成功
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}VulnArk已成功部署!${NC}"
-    echo -e "${GREEN}前端访问地址: http://localhost${NC}"
-    echo -e "${GREEN}API访问地址: http://localhost/api${NC}"
+    
+    # 获取本机IP地址
+    if command -v ip &> /dev/null; then
+        host_ip=$(ip route get 1 | sed -n 's/^.*src \([0-9.]*\) .*$/\1/p')
+    elif command -v ifconfig &> /dev/null; then
+        host_ip=$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | head -n 1)
+    else
+        host_ip="localhost"
+    fi
+    
+    web_port=$(grep -o '"[0-9]*:80"' docker-compose.yml | grep -o '[0-9]*' || echo "80")
+    api_port=$(grep -o '"[0-9]*:8080"' docker-compose.yml | grep -o '[0-9]*' || echo "8080")
+    
+    echo -e "${GREEN}前端访问地址: http://$host_ip:$web_port${NC}"
+    echo -e "${GREEN}API访问地址: http://$host_ip:$web_port/api${NC}"
     echo -e "${YELLOW}默认管理员账号:${NC}"
     echo "  用户名: admin"
     echo "  密码: admin123"
