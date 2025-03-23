@@ -211,7 +211,8 @@ VulnArk 采用微服务架构，主要包含三个组件：
 
 ### 截图展示
 
-*请在此处添加应用截图*
+<img width="1511" alt="iShot_2025-03-23_08 27 45" src="https://github.com/user-attachments/assets/06ab81aa-577a-48c8-8ba8-f25d51ee634a" />
+
 
 ### 配置说明
 
