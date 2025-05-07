@@ -1,5 +1,8 @@
 # VulnArk - 漏洞管理平台
 
+# 由于作者最近工作和家庭都比较繁忙，暂时没有精力更新，等我处理好一切后再继续更新，预计时间：２０２５年１０月。
+
+
 <div align="center">
   <img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
