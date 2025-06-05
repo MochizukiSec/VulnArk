@@ -32,7 +32,7 @@ RUN mkdir -p /app/config /app/logs /app/uploads
 COPY --from=builder /app/vulnark /app/
 
 # 复制配置文件
-COPY ./config/config.yaml /app/config/
+COPY ./config/config.docker.yaml /app/config/config.yaml
 
 # 设置工作目录
 WORKDIR /app

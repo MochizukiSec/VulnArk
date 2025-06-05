@@ -43,8 +43,7 @@ chmod +x -R ./mysql
 
 # 复制Docker配置文件
 echo -e "${YELLOW}配置后端...${NC}"
-cp -f ./backend/config/config.docker.yaml ./backend/config/config.yaml
-echo -e "${GREEN}已复制Docker配置文件${NC}"
+echo -e "${GREEN}后端配置已准备就绪${NC}"
 
 # 询问是否需要自定义端口配置
 echo -e "${YELLOW}是否需要自定义端口配置? (y/n)${NC}"

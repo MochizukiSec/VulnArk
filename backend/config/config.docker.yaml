@@ -9,9 +9,9 @@ database:
   type: mysql
   host: mysql  # 容器服务名
   port: 3306
-  username: ${DB_USER}  # 从环境变量读取
-  password: ${DB_PASSWORD}  # 从环境变量读取
-  database: ${DB_NAME}  # 从环境变量读取
+  username: vulnark  # 默认值，会被环境变量覆盖
+  password: vulnark_password  # 默认值，会被环境变量覆盖
+  database: vulnark  # 默认值，会被环境变量覆盖
   charset: utf8mb4
   max_idle_conns: 10
   max_open_conns: 100

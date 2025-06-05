@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,31 +39,66 @@ func InitDB() {
 
 // initMysql 初始化MySQL数据库连接
 func initMysql() {
-	host := viper.GetString("database.mysql.host")
-	port := viper.GetInt("database.mysql.port")
-	username := viper.GetString("database.mysql.username")
-	password := viper.GetString("database.mysql.password")
-	dbname := viper.GetString("database.mysql.database")
-	charset := viper.GetString("database.mysql.charset")
+	// 优先从环境变量读取，如果没有则从配置文件读取
+	host := getConfigString("database.host", "DB_HOST")
+	port := getConfigInt("database.port", "DB_PORT")
+	username := getConfigString("database.username", "DB_USER")
+	password := getConfigString("database.password", "DB_PASSWORD")
+	dbname := getConfigString("database.database", "DB_NAME")
+	charset := viper.GetString("database.charset")
+	if charset == "" {
+		charset = "utf8mb4"
+	}
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
 		username, password, host, port, dbname, charset)
 
+	log.Printf("尝试连接MySQL数据库: %s@%s:%d/%s", username, host, port, dbname)
+
 	var err error
-	DB, err = gorm.Open("mysql", dsn)
+	var retryCount = 5
+	var retryInterval = 5 * time.Second
+
+	// 连接重试机制
+	for i := 0; i < retryCount; i++ {
+		DB, err = gorm.Open("mysql", dsn)
+		if err == nil {
+			// 测试连接
+			if err = DB.DB().Ping(); err == nil {
+				break
+			}
+			DB.Close()
+		}
+		
+		log.Printf("数据库连接失败 (尝试 %d/%d): %v", i+1, retryCount, err)
+		if i < retryCount-1 {
+			log.Printf("等待 %v 后重试...", retryInterval)
+			time.Sleep(retryInterval)
+		}
+	}
+
 	if err != nil {
-		log.Fatalf("无法连接到MySQL数据库: %v", err)
+		log.Fatalf("无法连接到MySQL数据库，已重试%d次: %v", retryCount, err)
 	}
 
 	// 设置连接池配置
-	DB.DB().SetMaxIdleConns(viper.GetInt("database.mysql.max_idle_conns"))
-	DB.DB().SetMaxOpenConns(viper.GetInt("database.mysql.max_open_conns"))
+	maxIdleConns := viper.GetInt("database.max_idle_conns")
+	if maxIdleConns == 0 {
+		maxIdleConns = 10
+	}
+	maxOpenConns := viper.GetInt("database.max_open_conns")
+	if maxOpenConns == 0 {
+		maxOpenConns = 100
+	}
+	
+	DB.DB().SetMaxIdleConns(maxIdleConns)
+	DB.DB().SetMaxOpenConns(maxOpenConns)
 	DB.DB().SetConnMaxLifetime(time.Hour)
 
 	// 启用日志
 	DB.LogMode(viper.GetString("server.mode") == "development")
 
-	log.Println("成功连接到MySQL数据库")
+	log.Printf("成功连接到MySQL数据库 %s@%s:%d/%s", username, host, port, dbname)
 }
 
 // initMongoDB 初始化MongoDB数据库连接
@@ -160,4 +197,26 @@ func containsSubstring(str, substr string) bool {
 	str = strings.ToLower(str)
 	substr = strings.ToLower(substr)
 	return strings.Contains(str, substr)
+}
+
+// getConfigString 优先从环境变量读取字符串配置，如果没有则从配置文件读取
+func getConfigString(configKey, envKey string) string {
+	// 先尝试从环境变量读取
+	if envValue := os.Getenv(envKey); envValue != "" {
+		return envValue
+	}
+	// 再从配置文件读取
+	return viper.GetString(configKey)
+}
+
+// getConfigInt 优先从环境变量读取整数配置，如果没有则从配置文件读取
+func getConfigInt(configKey, envKey string) int {
+	// 先尝试从环境变量读取
+	if envValue := os.Getenv(envKey); envValue != "" {
+		if intValue, err := strconv.Atoi(envValue); err == nil {
+			return intValue
+		}
+	}
+	// 再从配置文件读取
+	return viper.GetInt(configKey)
 }
