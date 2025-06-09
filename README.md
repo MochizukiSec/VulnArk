@@ -7,6 +7,8 @@
   <img src="https://img.shields.io/badge/Vue-3.x-4FC08D.svg" alt="Vue">
 </div>
 
+## 作者最近正在重构此项目，将采用Rust作为后端语言，优化前后端代码，新增核心功能。将会在2025年7月前发布。
+
 ## 📋 更新日志
 
 ### v0.1.1 (2025-06-05)
